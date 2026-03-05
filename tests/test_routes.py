@@ -68,8 +68,13 @@ class TestYourResourceService(TestCase):
     ######################################################################
 
     def test_index(self):
-        """It should call the home page"""
+        """It should return service metadata on the root URL"""
         resp = self.client.get("/")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertIsNotNone(data)
+        self.assertEqual(data["name"], "Customers Service")
+        self.assertEqual(data["version"], "1.0")
+        self.assertEqual(data["customers_url"], "/customers")
 
     # Todo: Add your test cases here...
