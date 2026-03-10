@@ -3,18 +3,26 @@ Test Factory to make fake objects for testing
 """
 
 import factory
-from service.models import YourResourceModel
+from factory import Faker
+from service.models import CustomerProfileModel
 
 
-class YourResourceModelFactory(factory.Factory):
-    """Creates fake pets that you don't have to feed"""
+class CustomerProfileFactory(factory.Factory):
+    """Creates fake Customer Profiles for testing"""
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Maps factory to data model"""
 
-        model = YourResourceModel
+        model = CustomerProfileModel
 
     id = factory.Sequence(lambda n: n)
-    name = factory.Faker("first_name")
-
-    # Todo: Add your other attributes here...
+    name = Faker("name")
+    userid = factory.Sequence(lambda n: f"user{n}")  # sequence ensures uniqueness
+    email = factory.LazyAttribute(
+        lambda o: f"{o.userid}@example.com"
+    )  # ensures uniqueness
+    address = Faker("address")
+    active = True
+    product_attributes = None
+    assigned_csm = None
+    arr_value = None

@@ -15,15 +15,15 @@
 ######################################################################
 
 """
-YourResourceModel Service
+CustomerProfileModel Service
 
 This service implements a REST API that allows you to Create, Read, Update
-and Delete YourResourceModel
+and Delete CustomerProfileModel
 """
 
 from flask import jsonify, request, url_for, abort
 from flask import current_app as app  # Import Flask application
-from service.models import YourResourceModel
+from service.models import CustomerProfileModel
 from service.common import status  # HTTP Status Codes
 
 
@@ -43,4 +43,74 @@ def index():
 #  R E S T   A P I   E N D P O I N T S
 ######################################################################
 
-# Todo: Place your REST API code here ...
+
+######################################################################
+# C R E A T E   A   C U S T O M E R   P R O F I L E
+######################################################################
+@app.route("/customerprofiles", methods=["POST"])
+def create_customerprofiles():
+    """
+    Create a Customer Profile
+    This endpoint will create a Customer Profile based the data in the body that is posted
+    """
+    app.logger.info("Request to Create a Customer Profile...")
+    check_content_type("application/json")
+    profile = CustomerProfileModel()
+    # Get the data from the request and deserialize it
+    data = request.get_json()
+    app.logger.info("Processing: %s", data)
+    profile.deserialize(data)
+
+    # Check for duplicate userid
+    if CustomerProfileModel.query.filter_by(userid=profile.userid).first():
+        abort(status.HTTP_409_CONFLICT, description="userid already exists")
+
+    # Check for duplicate email
+    if CustomerProfileModel.query.filter_by(email=profile.email).first():
+        abort(status.HTTP_409_CONFLICT, description="email already exists")
+
+    # Save the new Customer Profile to the database
+    profile.create()
+    app.logger.info("CustomerProfile with new id [%s] saved!", profile.id)
+    # Return the location of the new Customer Profile
+    location_url = url_for("create_customerprofiles", _external=True)
+    return (
+        jsonify(profile.serialize()),
+        status.HTTP_201_CREATED,
+        {"Location": location_url},
+    )
+
+
+######################################################################
+# Checks the ContentType of a request
+######################################################################
+def check_content_type(content_type) -> None:
+    """Checks that the media type is correct"""
+    if "Content-Type" not in request.headers:
+        app.logger.error("No Content-Type specified.")
+        abort(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            f"Content-Type must be {content_type}",
+        )
+    if request.headers["Content-Type"] == content_type:
+        return
+    app.logger.error("Invalid Content-Type: %s", request.headers["Content-Type"])
+    abort(
+        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+        f"Content-Type must be {content_type}",
+    )
+
+
+######################################################################
+# Logs error messages before aborting
+######################################################################
+def error(status_code, reason):
+    """Logs the error and then aborts"""
+    app.logger.error(reason)
+    abort(status_code, reason)
+
+
+@app.route("/error")
+def trigger_error():
+    """Triggers a 500 error for testing purposes"""
+    abort(status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal Server Error")
