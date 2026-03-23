@@ -219,3 +219,30 @@ class TestYourResourceService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         data = response.get_json()
         self.assertIn("not found", data["message"].lower())
+
+    def test_delete_customerprofile(self):
+        """It should Delete a Customer Profile"""
+        # First create a profile
+        test_customerprofile = CustomerProfileFactory()
+        response = self.client.post(
+            BASE_URL,
+            json=test_customerprofile.serialize(),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        customer_id = response.get_json()["id"]
+
+        # Now delete it
+        response = self.client.delete(f"{BASE_URL}/{customer_id}")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Verify it's gone
+        response = self.client.get(f"{BASE_URL}/{customer_id}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_customerprofile_not_found(self):
+        """It should return 404 when deleting a Customer Profile that does not exist"""
+        response = self.client.delete(f"{BASE_URL}/0")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        data = response.get_json()
+        self.assertIn("not found", data["message"].lower())

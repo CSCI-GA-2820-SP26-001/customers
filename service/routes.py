@@ -136,3 +136,26 @@ def get_customerprofiles(customer_id):
         )
     app.logger.info("Returning Customer Profile with id [%s]", customer_id)
     return jsonify(profile.serialize()), status.HTTP_200_OK
+
+
+######################################################################
+# D E L E T E   A   C U S T O M E R   P R O F I L E
+######################################################################
+
+
+@app.route("/customerprofiles/<int:customer_id>", methods=["DELETE"])
+def delete_customerprofiles(customer_id):
+    """
+    Delete a Customer Profile
+    This endpoint will delete a Customer Profile based on its id
+    """
+    app.logger.info("Request to Delete a Customer Profile with id [%s]", customer_id)
+    profile = CustomerProfileModel.find(customer_id)
+    if not profile:
+        app.logger.warning("Customer Profile with id [%s] was not found", customer_id)
+        abort(
+            status.HTTP_404_NOT_FOUND, f"Customer with id '{customer_id}' was not found"
+        )
+    profile.delete()
+    app.logger.info("Customer Profile with id [%s] deleted", customer_id)
+    return {}, status.HTTP_204_NO_CONTENT
