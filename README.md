@@ -1,42 +1,88 @@
-# NYU DevOps Project Template
+# Customers Service
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Language-Python-blue.svg)](https://python.org/)
 
-This is a skeleton you can use to start your projects.
-
-**Note:** _Feel free to overwrite this `README.md` file with the one that describes your project._
-
 ## Overview
 
-This project template contains starter code for your class project. The `/service` folder contains your `models.py` file for your model and a `routes.py` file for your service. The `/tests` folder has test case starter code for testing the model and the service separately. All you need to do is add your functionality. You can use the [lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd) for code examples to copy from.
+The Customers Service is a REST API that manages customer profiles for an e-commerce platform. It allows you to Create, Read, Update, Delete, and List customers stored in a PostgreSQL database.
 
-## Automatic Setup
+## API Endpoints
 
-The best way to use this repo is to start your own repo using it as a git template. To do this just press the green **Use this template** button in GitHub and this will become the source for your repository.
+### Root URL
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/` | Returns service information |
 
-## Manual Setup
+**Response example:**
+```json
+{
+  "name": "Customer REST API Service",
+  "version": "1.0"
+}
+```
 
-You can also clone this repository and then copy and paste the starter code into your project repo folder on your local computer. Be careful not to copy over your own `README.md` file so be selective in what you copy.
+### Customers
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/customers` | Returns a list of all customers |
 
-There are 4 hidden files that you will need to copy manually if you use the Mac Finder or Windows Explorer to copy files from this folder into your repo folder.
+#### GET /customers
+Returns all customers as a JSON array.
 
-These should be copied using a bash shell as follows:
+**Response example:**
+```json
+[
+  {
+    "id": 1,
+    "first_name": "John",
+    "last_name": "Doe",
+    "address": "123 Main St"
+  }
+]
+```
 
+**Response codes:**
+- `200 OK` — always returned, even if no customers exist (returns empty array `[]`)
+
+## Customer Model
+
+A Customer has the following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | integer | auto | Unique identifier |
+| first_name | string | yes | Customer's first name |
+| last_name | string | yes | Customer's last name |
+| address | string | no | Customer's address |
+
+## Running the Service
+
+### Prerequisites
+- Docker Desktop
+- VSCode with Dev Containers extension
+
+### Setup
+1. Clone the repository
+2. Open in VSCode
+3. Reopen in Dev Container when prompted
+4. The service will be available at `http://localhost:8080`
+
+### Running Tests
 ```bash
-    cp .gitignore  ../<your_repo_folder>/
-    cp .flaskenv ../<your_repo_folder>/
-    cp .gitattributes ../<your_repo_folder>/
+make test
+```
+
+### Running Lint
+```bash
+make lint
 ```
 
 ## Contents
-
-The project contains the following:
-
 ```text
 .gitignore          - this will ignore vagrant and other metadata files
 .flaskenv           - Environment variables to configure Flask
-.gitattributes      - File to gix Windows CRLF issues
+.gitattributes      - File to fix Windows CRLF issues
 .devcontainers/     - Folder with support for VSCode Remote Containers
 dot-env-example     - copy to .env to use environment variables
 pyproject.toml      - Poetry list of Python libraries required by your code
