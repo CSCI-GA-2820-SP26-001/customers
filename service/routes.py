@@ -73,7 +73,9 @@ def create_customerprofiles():
     profile.create()
     app.logger.info("CustomerProfile with new id [%s] saved!", profile.id)
     # Return the location of the new Customer Profile
-    location_url = url_for("create_customerprofiles", _external=True)
+    location_url = url_for(
+        "get_customerprofiles", customer_id=profile.id, _external=True
+    )
     return (
         jsonify(profile.serialize()),
         status.HTTP_201_CREATED,
@@ -114,3 +116,23 @@ def error(status_code, reason):
 def trigger_error():
     """Triggers a 500 error for testing purposes"""
     abort(status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal Server Error")
+
+
+######################################################################
+# R E A D   A   C U S T O M E R   P R O F I L E
+######################################################################
+@app.route("/customerprofiles/<int:customer_id>", methods=["GET"])
+def get_customerprofiles(customer_id):
+    """
+    Retrieve a Customer Profile
+    This endpoint will return a Customer Profile based on its id
+    """
+    app.logger.info("Request to Retrieve a Customer Profile with id [%s]", customer_id)
+    profile = CustomerProfileModel.find(customer_id)
+    if not profile:
+        app.logger.warning("Customer Profile with id [%s] was not found", customer_id)
+        abort(
+            status.HTTP_404_NOT_FOUND, f"Customer with id '{customer_id}' was not found"
+        )
+    app.logger.info("Returning Customer Profile with id [%s]", customer_id)
+    return jsonify(profile.serialize()), status.HTTP_200_OK

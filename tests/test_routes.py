@@ -188,3 +188,34 @@ class TestYourResourceService(TestCase):
 
         with self.assertRaises(Exception):
             error(status.HTTP_400_BAD_REQUEST, "test error message")
+
+    def test_get_customerprofile(self):
+        """It should return a Customer Profile by id"""
+
+        # First create a profile
+        test_customerprofile = CustomerProfileFactory()
+        response = self.client.post(
+            BASE_URL,
+            json=test_customerprofile.serialize(),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_profile = response.get_json()
+        customer_id = new_profile["id"]
+
+        # Now retrieve it
+        response = self.client.get(f"{BASE_URL}/{customer_id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["name"], test_customerprofile.name)
+        self.assertEqual(data["userid"], test_customerprofile.userid)
+        self.assertEqual(data["email"], test_customerprofile.email)
+        self.assertEqual(data["address"], test_customerprofile.address)
+        self.assertEqual(data["active"], test_customerprofile.active)
+
+    def test_get_customerprofile_not_found(self):
+        """It should return 404 when Customer Profile is not found"""
+        response = self.client.get(f"{BASE_URL}/0")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        data = response.get_json()
+        self.assertIn("not found", data["message"].lower())
