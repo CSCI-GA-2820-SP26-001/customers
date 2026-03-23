@@ -20,11 +20,15 @@ Customer API Service Test Suite
 import os
 import logging
 from unittest import TestCase
-from unittest.mock import patch
 from wsgi import app
 from service.common import status
 from service.models import db, Customer, DataValidationError
-from service.common.error_handlers import bad_request
+from service.common.error_handlers import (
+    bad_request,
+    request_validation_error,
+    mediatype_not_supported,
+    internal_server_error,
+)
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
@@ -118,23 +122,17 @@ class TestCustomerService(TestCase):
     def test_request_validation_error(self):
         """It should handle DataValidationError and return 400"""
         with app.test_request_context():
-            from service.common.error_handlers import request_validation_error
-
             response = request_validation_error(DataValidationError("invalid"))
             self.assertEqual(response[1], status.HTTP_400_BAD_REQUEST)
 
     def test_415_unsupported_media_type(self):
         """It should return 415 for unsupported media type"""
         with app.test_request_context():
-            from service.common.error_handlers import mediatype_not_supported
-
             response = mediatype_not_supported(Exception("unsupported"))
             self.assertEqual(response[1], status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     def test_500_internal_server_error(self):
         """It should return 500 for internal server error"""
         with app.test_request_context():
-            from service.common.error_handlers import internal_server_error
-
             response = internal_server_error(Exception("server error"))
             self.assertEqual(response[1], status.HTTP_500_INTERNAL_SERVER_ERROR)
