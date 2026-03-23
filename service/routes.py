@@ -15,16 +15,16 @@
 ######################################################################
 
 """
-YourResourceModel Service
+Customer Service
 
 This service implements a REST API that allows you to Create, Read, Update
-and Delete YourResourceModel
+and Delete Customers
 """
 
 from flask import jsonify, request, url_for, abort
-from flask import current_app as app  # Import Flask application
-from service.models import YourResourceModel
-from service.common import status  # HTTP Status Codes
+from flask import current_app as app
+from service.models import Customer
+from service.common import status
 
 
 ######################################################################
@@ -34,7 +34,10 @@ from service.common import status  # HTTP Status Codes
 def index():
     """Root URL response"""
     return (
-        "Reminder: return some useful information in json format about the service here",
+        jsonify(
+            name="Customer REST API Service",
+            version="1.0",
+        ),
         status.HTTP_200_OK,
     )
 
@@ -43,4 +46,12 @@ def index():
 #  R E S T   A P I   E N D P O I N T S
 ######################################################################
 
-# Todo: Place your REST API code here ...
+
+@app.route("/customers", methods=["GET"])
+def list_customers():
+    """Returns all Customers"""
+    app.logger.info("Request to list all customers")
+    customers = Customer.all()
+    results = [customer.serialize() for customer in customers]
+    app.logger.info("Returning %d customers", len(results))
+    return jsonify(results), status.HTTP_200_OK
