@@ -110,20 +110,44 @@ class TestCustomerService(TestCase):
         self.assertEqual(data["id"], customer.id)
 
     def test_update_customer(self):
+        """It should update an existing customer and return the updated data"""
+        # Step 1: Create a customer in the database using the factory
         customer = CustomerFactory()
         customer.create()
+
+        # Step 2: Build a payload with updated fields
         payload = {
-            "name": "Bob",
+            "name": "Bob Updated",
             "userid": customer.userid,
             "email": customer.email,
-            "address": "99 Lane",
+            "address": "99 New Lane",
         }
 
+        # Step 3: Send a PUT request to update this customer
         resp = self.client.put(f"/customers/{customer.id}", json=payload)
+
+        # Step 4: Check that we got 200 OK back
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
-        updated = Customer.find(customer.id)
-        self.assertEqual(updated.name, "Bob")
+        # Step 5: Check the response body has the updated data
+        data = resp.get_json()
+        self.assertEqual(data["name"], "Bob Updated")
+        self.assertEqual(data["address"], "99 New Lane")
+        self.assertEqual(data["userid"], customer.userid)
+        self.assertEqual(data["email"], customer.email)
+
+    def test_update_customer_missing_fields(self):
+        """It should return 400 Bad Request when required fields are missing"""
+        # Step 1: Create a customer first
+        customer = CustomerFactory()
+        customer.create()
+
+        # Step 2: Send a PUT with missing required fields (no userid, no email)
+        bad_payload = {"name": "Incomplete"}
+
+        # Step 3: Should get 400 because userid and email are required
+        resp = self.client.put(f"/customers/{customer.id}", json=bad_payload)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_delete_customer(self):
         customer = CustomerFactory()
