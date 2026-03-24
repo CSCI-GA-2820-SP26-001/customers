@@ -48,4 +48,114 @@ def index():
 #  R E S T   A P I   E N D P O I N T S
 ######################################################################
 
-# Todo: Place your REST API code here ...
+
+def check_content_type(expected: str) -> None:
+    """Checks that the request Content-Type matches what the API expects."""
+    if "Content-Type" not in request.headers:
+        app.logger.error("No Content-Type specified.")
+        abort(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            description=f"Content-Type must be {expected}",
+        )
+    if request.headers["Content-Type"] != expected:
+        app.logger.error("Invalid Content-Type: %s", request.headers["Content-Type"])
+        abort(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            description=f"Content-Type must be {expected}",
+        )
+
+
+######################################################################
+# CREATE A NEW CUSTOMER
+######################################################################
+@app.route("/customers", methods=["POST"])
+def create_customer():
+    """Create a new Customer"""
+    app.logger.info("Request to create a customer")
+    check_content_type("application/json")
+
+    data = request.get_json()
+    app.logger.debug("Received data: %s", data)
+
+    try:
+        customer = Customer()
+        customer.deserialize(data)
+        customer.create()
+        app.logger.info("Created customer with id: %s", customer.id)
+        return jsonify(customer.serialize()), status.HTTP_201_CREATED, {
+            "Location": url_for("get_customer", customer_id=customer.id, _external=True)
+        }
+    except Exception as e:
+        app.logger.error("Error creating customer: %s", str(e))
+        abort(status.HTTP_400_BAD_REQUEST, description=str(e))
+
+
+######################################################################
+# READ A CUSTOMER
+######################################################################
+@app.route("/customers/<int:customer_id>", methods=["GET"])
+def get_customer(customer_id):
+    """Get a Customer by id"""
+    app.logger.info("Request to get customer with id: %s", customer_id)
+    customer = Customer.find(customer_id)
+    if not customer:
+        app.logger.warning("Customer with id: %s not found", customer_id)
+        abort(status.HTTP_404_NOT_FOUND, description="Customer not found")
+
+    app.logger.info("Returning customer with id: %s", customer_id)
+    return jsonify(customer.serialize()), status.HTTP_200_OK
+
+
+######################################################################
+# UPDATE A CUSTOMER
+######################################################################
+@app.route("/customers/<int:customer_id>", methods=["PUT"])
+def update_customer(customer_id):
+    """Update a Customer"""
+    app.logger.info("Request to update customer with id: %s", customer_id)
+    check_content_type("application/json")
+
+    customer = Customer.find(customer_id)
+    if not customer:
+        app.logger.warning("Customer with id: %s not found", customer_id)
+        abort(status.HTTP_404_NOT_FOUND, description="Customer not found")
+
+    data = request.get_json()
+    app.logger.debug("Received data: %s", data)
+
+    try:
+        customer.deserialize(data)
+        customer.update()
+        app.logger.info("Updated customer with id: %s", customer_id)
+        return jsonify(customer.serialize()), status.HTTP_200_OK
+    except Exception as e:
+        app.logger.error("Error updating customer: %s", str(e))
+        abort(status.HTTP_400_BAD_REQUEST, description=str(e))
+
+
+######################################################################
+# DELETE A CUSTOMER
+######################################################################
+@app.route("/customers/<int:customer_id>", methods=["DELETE"])
+def delete_customer(customer_id):
+    """Delete a Customer"""
+    app.logger.info("Request to delete customer with id: %s", customer_id)
+    customer = Customer.find(customer_id)
+    if customer:
+        customer.delete()
+        app.logger.info("Deleted customer with id: %s", customer_id)
+
+    return "", status.HTTP_204_NO_CONTENT
+
+
+######################################################################
+# LIST ALL CUSTOMERS
+######################################################################
+@app.route("/customers", methods=["GET"])
+def list_customers():
+    """Get all Customers"""
+    app.logger.info("Request to list all customers")
+    customers = Customer.all()
+    results = [customer.serialize() for customer in customers]
+    app.logger.info("Returning %d customers", len(results))
+    return jsonify(results), status.HTTP_200_OK
