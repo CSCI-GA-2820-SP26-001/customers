@@ -159,3 +159,10 @@ def list_customers():
     results = [customer.serialize() for customer in customers]
     app.logger.info("Returning %d customers", len(results))
     return jsonify(results), status.HTTP_200_OK
+
+
+@app.route("/error")
+def trigger_error():
+    """Intentionally triggers a server error for testing"""
+    app.logger.info("Triggering internal server error")
+    abort(status.HTTP_500_INTERNAL_SERVER_ERROR)

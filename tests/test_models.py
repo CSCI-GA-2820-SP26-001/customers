@@ -22,8 +22,9 @@ Test cases for Pet Model
 import os
 import logging
 from unittest import TestCase
+from unittest.mock import patch
 from wsgi import app
-from service.models import Customer, db
+from service.models import Customer, db, DataValidationError
 from .factories import CustomerFactory
 
 DATABASE_URI = os.getenv(
@@ -67,7 +68,6 @@ class TestCustomerModel(TestCase):
 
     def test_example_replace_this(self):
         """It should create a Customer"""
-        # Todo: Remove this test case example
         resource = CustomerFactory()
         resource.create()
         self.assertIsNotNone(resource.id)
@@ -76,4 +76,71 @@ class TestCustomerModel(TestCase):
         data = Customer.find(resource.id)
         self.assertEqual(data.name, resource.name)
 
-    # Todo: Add your test cases here...
+    def test_update_customer(self):
+        resource = CustomerFactory()
+        resource.create()
+        resource.name = "Updated Name"
+        resource.update()
+
+        updated = Customer.find(resource.id)
+        self.assertEqual(updated.name, "Updated Name")
+
+    def test_delete_customer(self):
+        resource = CustomerFactory()
+        resource.create()
+        resource_id = resource.id
+
+        resource.delete()
+        self.assertIsNone(Customer.find(resource_id))
+
+    def test_find_by_userid(self):
+        resource = CustomerFactory()
+        resource.create()
+
+        found = Customer.find_by_userid(resource.userid)
+        self.assertIsNotNone(found)
+        self.assertEqual(found.email, resource.email)
+
+    def test_serialize_deserialize(self):
+        resource = CustomerFactory()
+        data = resource.serialize()
+        new_cust = Customer()
+        new_cust.deserialize(data)
+        self.assertEqual(new_cust.name, resource.name)
+        self.assertEqual(new_cust.userid, resource.userid)
+
+    def test_duplicate_userid_raises(self):
+        resource1 = CustomerFactory()
+        resource1.create()
+        resource2 = CustomerFactory(userid=resource1.userid, email='dup@example.com')
+
+        with self.assertRaises(Exception):
+            resource2.create()
+
+    def test_update_raises_data_validation_error(self):
+        resource = CustomerFactory()
+        resource.create()
+        resource.name = "new"
+
+        with patch("service.models.db.session.commit", side_effect=Exception("fail")):
+            with self.assertRaises(DataValidationError):
+                resource.update()
+
+    def test_delete_raises_data_validation_error(self):
+        resource = CustomerFactory()
+        resource.create()
+
+        with patch("service.models.db.session.commit", side_effect=Exception("fail")):
+            with self.assertRaises(DataValidationError):
+                resource.delete()
+
+    def test_deserialize_missing_required_fields(self):
+        customer = Customer()
+        with self.assertRaises(DataValidationError):
+            customer.deserialize({"name": "Jeffrey"})
+
+    def test_create_missing_required_fields(self):
+        resource = Customer(name="Jeffrey")
+        with self.assertRaises(Exception):
+            resource.create()  # missing userid and email triggers DataValidationError or DB error
+

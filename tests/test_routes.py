@@ -25,6 +25,7 @@ from unittest import TestCase
 from wsgi import app
 from service.common import status
 from service.models import db, Customer
+from .factories import CustomerFactory
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
@@ -77,4 +78,92 @@ class TestCustomerService(TestCase):
         self.assertEqual(data["version"], "1.0")
         self.assertEqual(data["customers_url"], "/customers")
 
-    # Todo: Add your test cases here...
+    def test_create_customer(self):
+        payload = {
+            "name": "Alice",
+            "userid": "alice1",
+            "email": "alice1@example.com",
+            "address": "1 Main St",
+        }
+        resp = self.client.post("/customers", json=payload)
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        data = resp.get_json()
+        self.assertEqual(data["name"], "Alice")
+        self.assertEqual(data["userid"], "alice1")
+
+    def test_list_customers(self):
+        CustomerFactory().create()
+        CustomerFactory().create()
+
+        resp = self.client.get("/customers")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 2)
+
+    def test_get_customer(self):
+        customer = CustomerFactory()
+        customer.create()
+
+        resp = self.client.get(f"/customers/{customer.id}")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(data["id"], customer.id)
+
+    def test_update_customer(self):
+        customer = CustomerFactory()
+        customer.create()
+        payload = {
+            "name": "Bob",
+            "userid": customer.userid,
+            "email": customer.email,
+            "address": "99 Lane",
+        }
+
+        resp = self.client.put(f"/customers/{customer.id}", json=payload)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        updated = Customer.find(customer.id)
+        self.assertEqual(updated.name, "Bob")
+
+    def test_delete_customer(self):
+        customer = CustomerFactory()
+        customer.create()
+
+        resp = self.client.delete(f"/customers/{customer.id}")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.assertIsNone(Customer.find(customer.id))
+
+    def test_update_customer_not_found(self):
+        resp = self.client.put(
+            "/customers/99999",
+            json={"name":"NotThere","userid":"x","email":"x@example.com"},
+        )
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_customer_not_found(self):
+        resp = self.client.get("/customers/99999")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_bad_content_type(self):
+        resp = self.client.post("/customers", data="{}", content_type="text/plain")
+        self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+    def test_no_content_type(self):
+        resp = self.client.post("/customers", data='{"name":"NoCT"}')
+        self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+    def test_create_customer_missing_fields(self):
+        resp = self.client.post("/customers", json={"name": "NoUser"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_method_not_allowed(self):
+        resp = self.client.post("/customers/1", json={})
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_internal_server_error(self):
+        resp = self.client.get("/error")
+        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        data = resp.get_json()
+        self.assertEqual(data["error"], "Internal Server Error")
+
