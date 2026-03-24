@@ -21,10 +21,11 @@ TestCustomer API Service Test Suite
 # pylint: disable=duplicate-code
 import os
 import logging
+from datetime import datetime, timedelta
 from unittest import TestCase
 from wsgi import app
 from service.common import status
-from service.models import db, Customer
+from service.models import db, Customer, IdempotencyKey
 from .factories import CustomerFactory
 
 DATABASE_URI = os.getenv(
@@ -57,6 +58,7 @@ class TestCustomerService(TestCase):
     def setUp(self):
         """Runs before each test"""
         self.client = app.test_client()
+        db.session.query(IdempotencyKey).delete()  # clean up idempotency keys
         db.session.query(Customer).delete()  # clean up the last tests
         db.session.commit()
 
@@ -166,4 +168,122 @@ class TestCustomerService(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         data = resp.get_json()
         self.assertEqual(data["error"], "Internal Server Error")
+
+    ######################################################################
+    #  I D E M P O T E N C Y   T E S T S
+    ######################################################################
+
+    def test_create_customer_with_idempotency_key(self):
+        """It should create a customer normally when an Idempotency-Key is provided"""
+        payload = {
+            "name": "Idem",
+            "userid": "idem1",
+            "email": "idem1@example.com",
+            "address": "100 Key St",
+        }
+        resp = self.client.post(
+            "/customers",
+            json=payload,
+            headers={"Idempotency-Key": "key-happy-path"},
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        data = resp.get_json()
+        self.assertEqual(data["name"], "Idem")
+        self.assertEqual(data["userid"], "idem1")
+
+    def test_create_customer_idempotent_replay(self):
+        """It should return the same response when the same key+payload is sent twice"""
+        payload = {
+            "name": "Replay",
+            "userid": "replay1",
+            "email": "replay1@example.com",
+            "address": "200 Retry Rd",
+        }
+        headers = {"Idempotency-Key": "key-replay"}
+
+        # First request — creates the customer
+        resp1 = self.client.post("/customers", json=payload, headers=headers)
+        self.assertEqual(resp1.status_code, status.HTTP_201_CREATED)
+        data1 = resp1.get_json()
+
+        # Second request — same key, same payload (a retry)
+        resp2 = self.client.post("/customers", json=payload, headers=headers)
+        self.assertEqual(resp2.status_code, status.HTTP_201_CREATED)
+        data2 = resp2.get_json()
+
+        # Should get back the SAME customer id (no duplicate created)
+        self.assertEqual(data1["id"], data2["id"])
+        self.assertEqual(data1["name"], data2["name"])
+
+        # Verify only ONE customer exists in the database
+        all_customers = self.client.get("/customers")
+        self.assertEqual(len(all_customers.get_json()), 1)
+
+    def test_create_customer_same_key_different_payload(self):
+        """It should return 409 Conflict when the same key is reused with different data"""
+        headers = {"Idempotency-Key": "key-conflict"}
+
+        # First request
+        payload1 = {
+            "name": "Original",
+            "userid": "conflict1",
+            "email": "conflict1@example.com",
+        }
+        resp1 = self.client.post("/customers", json=payload1, headers=headers)
+        self.assertEqual(resp1.status_code, status.HTTP_201_CREATED)
+
+        # Second request — same key but DIFFERENT data
+        payload2 = {
+            "name": "Sneaky Different",
+            "userid": "conflict2",
+            "email": "conflict2@example.com",
+        }
+        resp2 = self.client.post("/customers", json=payload2, headers=headers)
+        self.assertEqual(resp2.status_code, status.HTTP_409_CONFLICT)
+
+    def test_create_customer_without_idempotency_key(self):
+        """It should still work normally when no Idempotency-Key header is sent"""
+        payload = {
+            "name": "NoKey",
+            "userid": "nokey1",
+            "email": "nokey1@example.com",
+        }
+        # No Idempotency-Key header — should work exactly as before
+        resp = self.client.post("/customers", json=payload)
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        data = resp.get_json()
+        self.assertEqual(data["name"], "NoKey")
+
+    def test_create_customer_idempotency_key_expired(self):
+        """It should treat an expired key as a new request"""
+        payload = {
+            "name": "Expired",
+            "userid": "expired1",
+            "email": "expired1@example.com",
+        }
+        headers = {"Idempotency-Key": "key-expired"}
+
+        # First request — creates the customer
+        resp1 = self.client.post("/customers", json=payload, headers=headers)
+        self.assertEqual(resp1.status_code, status.HTTP_201_CREATED)
+        data1 = resp1.get_json()
+
+        # Manually age the idempotency key to 25 hours ago (past the 24h window)
+        idem_record = IdempotencyKey.query.filter_by(key="key-expired").first()
+        idem_record.created_at = datetime.utcnow() - timedelta(hours=25)
+        db.session.commit()
+
+        # Send again with a new userid/email (since old customer still exists
+        # with the unique userid, we use different values to avoid DB conflict)
+        payload2 = {
+            "name": "Expired",
+            "userid": "expired2",
+            "email": "expired2@example.com",
+        }
+        resp2 = self.client.post("/customers", json=payload2, headers=headers)
+        self.assertEqual(resp2.status_code, status.HTTP_201_CREATED)
+        data2 = resp2.get_json()
+
+        # Should be a DIFFERENT customer (new ID) since the key expired
+        self.assertNotEqual(data1["id"], data2["id"])
 

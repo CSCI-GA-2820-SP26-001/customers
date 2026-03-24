@@ -5,6 +5,7 @@ All of the models are stored in this module
 """
 
 import logging
+from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 
 logger = logging.getLogger("flask.app")
@@ -134,3 +135,37 @@ class Customer(db.Model):
         """Returns a Customer with the given userid"""
         logger.info("Processing userid query for %s ...", userid)
         return cls.query.filter(cls.userid == userid).one_or_none()
+
+
+######################################################################
+# IdempotencyKey Model
+######################################################################
+class IdempotencyKey(db.Model):
+    """
+    Stores idempotency keys and their cached responses.
+
+    Think of this like a receipt: when a client sends a request with an
+    Idempotency-Key header, we save the "receipt" here. If they send
+    the same request again (e.g., due to a network retry), we hand back
+    the saved receipt instead of creating a duplicate.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(64), nullable=False)
+    endpoint = db.Column(db.String(64), nullable=False)
+    request_payload_hash = db.Column(db.String(64), nullable=False)
+    response_body = db.Column(db.Text, nullable=False)
+    response_status = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    # This ensures no two rows can have the same (key, endpoint) combo
+    __table_args__ = (
+        db.UniqueConstraint("key", "endpoint", name="uix_key_endpoint"),
+    )
+
+    def __repr__(self):
+        return f"<IdempotencyKey {self.key} endpoint=[{self.endpoint}]>"
+
+    def is_expired(self, hours=24):
+        """Check if this key is older than the given number of hours"""
+        return datetime.utcnow() - self.created_at > timedelta(hours=hours)
