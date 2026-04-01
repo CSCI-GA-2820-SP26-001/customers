@@ -159,3 +159,25 @@ def delete_customerprofiles(customer_id):
     profile.delete()
     app.logger.info("Customer Profile with id [%s] deleted", customer_id)
     return {}, status.HTTP_204_NO_CONTENT
+
+
+######################################################################
+# A C T I V A T E   A   C U S T O M E R   P R O F I L E
+######################################################################
+@app.route("/customerprofiles/<int:customer_id>/activate", methods=["PUT"])
+def activate_customerprofile(customer_id):
+    """
+    Activate a Customer Profile
+    This endpoint will set active=True on a Customer Profile based on its id
+    """
+    app.logger.info("Request to Activate Customer Profile with id [%s]", customer_id)
+    profile = CustomerProfileModel.find(customer_id)
+    if not profile:
+        app.logger.warning("Customer Profile with id [%s] was not found", customer_id)
+        abort(
+            status.HTTP_404_NOT_FOUND, f"Customer with id '{customer_id}' was not found"
+        )
+    profile.active = True
+    profile.update()
+    app.logger.info("Customer Profile with id [%s] has been activated", customer_id)
+    return jsonify(profile.serialize()), status.HTTP_200_OK

@@ -246,3 +246,26 @@ class TestYourResourceService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         data = response.get_json()
         self.assertIn("not found", data["message"].lower())
+
+    def test_activate_customerprofile(self):
+        """It should Activate a Customer Profile"""
+        # First create an inactive customer
+        test_customerprofile = CustomerProfileFactory(active=False)
+        response = self.client.post(
+            BASE_URL,
+            json=test_customerprofile.serialize(),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        customer_id = response.get_json()["id"]
+
+        # Now activate it
+        response = self.client.put(f"{BASE_URL}/{customer_id}/activate")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["active"], True)
+
+    def test_activate_customerprofile_not_found(self):
+        """It should return 404 when activating a Customer Profile that does not exist"""
+        response = self.client.put(f"{BASE_URL}/0/activate")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
