@@ -236,3 +236,24 @@ class TestCustomerProfileModel(TestCase):
             "service.models.db.session.commit", side_effect=Exception("commit error")
         ):
             self.assertRaises(DataValidationError, profile.create)
+
+    def test_active_defaults_to_true(self):
+        """It should default active to True when not provided"""
+        profile = CustomerProfileFactory(active=True)
+        profile.id = None
+        profile.create()
+        found = CustomerProfileModel.find(profile.id)
+        self.assertTrue(found.active)
+
+    def test_serialize_deserialize_active(self):
+        """It should serialize and deserialize the active field correctly"""
+        profile = CustomerProfileFactory(active=False)
+        profile.id = None
+        profile.create()
+        data = profile.serialize()
+        self.assertIn("active", data)
+        self.assertEqual(data["active"], False)
+
+        new_profile = CustomerProfileModel()
+        new_profile.deserialize(data)
+        self.assertEqual(new_profile.active, False)

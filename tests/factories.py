@@ -4,6 +4,7 @@ Test Factory to make fake objects for testing
 
 import factory
 from factory import Faker
+from factory.fuzzy import FuzzyChoice
 from service.models import CustomerProfileModel
 
 
@@ -22,7 +23,7 @@ class CustomerProfileFactory(factory.Factory):
         lambda o: f"{o.userid}@example.com"
     )  # ensures uniqueness
     address = Faker("address")
-    active = True
+    active = FuzzyChoice(choices=[True, False])
     product_attributes = None
     assigned_csm = None
     arr_value = None
