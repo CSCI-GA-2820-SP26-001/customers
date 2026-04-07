@@ -77,6 +77,14 @@ class TestCustomerService(TestCase):
         self.assertEqual(data["version"], "1.0")
         self.assertEqual(data["customers_url"], "/customers")
 
+    def test_health(self):
+        """It should return JSON health status for probes"""
+        resp = self.client.get("/health")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.content_type, "application/json")
+        data = resp.get_json()
+        self.assertEqual(data, {"status": "OK"})
+
     def test_create_customer(self):
         """It should Create a new Customer"""
         payload = {

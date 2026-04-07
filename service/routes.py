@@ -45,6 +45,16 @@ def index():
 
 
 ######################################################################
+# HEALTH
+######################################################################
+@app.route("/health")
+def health():
+    """Health check for monitors (e.g. Kubernetes liveness/readiness)"""
+    app.logger.info("Health check requested")
+    return jsonify({"status": "OK"}), status.HTTP_200_OK
+
+
+######################################################################
 #  R E S T   A P I   E N D P O I N T S
 ######################################################################
 
