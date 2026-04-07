@@ -200,3 +200,36 @@ class TestCustomerService(TestCase):
         """It should return 404 when activating a Customer that does not exist"""
         resp = self.client.put("/customers/99999/activate")
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_query_customers_by_name(self):
+        """It should return customers filtered by name"""
+        customer1 = CustomerFactory(name="Alice")
+        customer2 = CustomerFactory(name="Bob")
+        customer1.create()
+        customer2.create()
+
+        resp = self.client.get("/customers?name=Alice")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["name"], "Alice")
+
+    def test_query_customers_by_name_case_insensitive(self):
+        """It should return customers filtered by name case-insensitively"""
+        customer = CustomerFactory(name="Alice")
+        customer.create()
+
+        resp = self.client.get("/customers?name=alice")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
+
+    def test_query_customers_by_name_no_match(self):
+        """It should return empty list when no customers match"""
+        customer = CustomerFactory(name="Alice")
+        customer.create()
+
+        resp = self.client.get("/customers?name=NoMatch")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 0)
