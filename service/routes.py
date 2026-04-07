@@ -82,9 +82,15 @@ def create_customer():
         customer.deserialize(data)
         customer.create()
         app.logger.info("Created customer with id: %s", customer.id)
-        return jsonify(customer.serialize()), status.HTTP_201_CREATED, {
-            "Location": url_for("get_customer", customer_id=customer.id, _external=True)
-        }
+        return (
+            jsonify(customer.serialize()),
+            status.HTTP_201_CREATED,
+            {
+                "Location": url_for(
+                    "get_customer", customer_id=customer.id, _external=True
+                )
+            },
+        )
     except Exception as e:
         app.logger.error("Error creating customer: %s", str(e))
         abort(status.HTTP_400_BAD_REQUEST, description=str(e))
@@ -166,3 +172,25 @@ def trigger_error():
     """Intentionally triggers a server error for testing"""
     app.logger.info("Triggering internal server error")
     abort(status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+######################################################################
+# A C T I V A T E   A   C U S T O M E R
+######################################################################
+@app.route("/customers/<int:customer_id>/activate", methods=["PUT"])
+def activate_customer(customer_id):
+    """
+    Activate a Customer
+    This endpoint will set active=True on a Customer based on its id
+    """
+    app.logger.info("Request to Activate Customer with id [%s]", customer_id)
+    customer = Customer.find(customer_id)
+    if not customer:
+        app.logger.warning("Customer with id [%s] was not found", customer_id)
+        abort(
+            status.HTTP_404_NOT_FOUND, f"Customer with id '{customer_id}' was not found"
+        )
+    customer.active = True
+    customer.update()
+    app.logger.info("Customer with id [%s] has been activated", customer_id)
+    return jsonify(customer.serialize()), status.HTTP_200_OK

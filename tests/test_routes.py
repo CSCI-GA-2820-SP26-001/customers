@@ -44,7 +44,6 @@ class TestCustomerService(TestCase):
         """Run once before all tests"""
         app.config["TESTING"] = True
         app.config["DEBUG"] = False
-        # Set up the test database
         app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
         app.logger.setLevel(logging.CRITICAL)
         app.app_context().push()
@@ -57,7 +56,7 @@ class TestCustomerService(TestCase):
     def setUp(self):
         """Runs before each test"""
         self.client = app.test_client()
-        db.session.query(Customer).delete()  # clean up the last tests
+        db.session.query(Customer).delete()
         db.session.commit()
 
     def tearDown(self):
@@ -79,6 +78,7 @@ class TestCustomerService(TestCase):
         self.assertEqual(data["customers_url"], "/customers")
 
     def test_create_customer(self):
+        """It should Create a new Customer"""
         payload = {
             "name": "Alice",
             "userid": "alice1",
@@ -92,6 +92,7 @@ class TestCustomerService(TestCase):
         self.assertEqual(data["userid"], "alice1")
 
     def test_list_customers(self):
+        """It should List all Customers"""
         CustomerFactory().create()
         CustomerFactory().create()
 
@@ -101,6 +102,7 @@ class TestCustomerService(TestCase):
         self.assertEqual(len(data), 2)
 
     def test_get_customer(self):
+        """It should Get a Customer by id"""
         customer = CustomerFactory()
         customer.create()
 
@@ -110,6 +112,7 @@ class TestCustomerService(TestCase):
         self.assertEqual(data["id"], customer.id)
 
     def test_update_customer(self):
+        """It should Update a Customer"""
         customer = CustomerFactory()
         customer.create()
         payload = {
@@ -126,6 +129,7 @@ class TestCustomerService(TestCase):
         self.assertEqual(updated.name, "Bob")
 
     def test_delete_customer(self):
+        """It should Delete a Customer"""
         customer = CustomerFactory()
         customer.create()
 
@@ -135,35 +139,56 @@ class TestCustomerService(TestCase):
         self.assertIsNone(Customer.find(customer.id))
 
     def test_update_customer_not_found(self):
+        """It should return 404 when updating a Customer that does not exist"""
         resp = self.client.put(
             "/customers/99999",
-            json={"name":"NotThere","userid":"x","email":"x@example.com"},
+            json={"name": "NotThere", "userid": "x", "email": "x@example.com"},
         )
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_get_customer_not_found(self):
+        """It should return 404 when Customer is not found"""
         resp = self.client.get("/customers/99999")
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_bad_content_type(self):
+        """It should return 415 when Content-Type is wrong"""
         resp = self.client.post("/customers", data="{}", content_type="text/plain")
         self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     def test_no_content_type(self):
+        """It should return 415 when no Content-Type is set"""
         resp = self.client.post("/customers", data='{"name":"NoCT"}')
         self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     def test_create_customer_missing_fields(self):
+        """It should return 400 when required fields are missing"""
         resp = self.client.post("/customers", json={"name": "NoUser"})
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_method_not_allowed(self):
+        """It should return 405 when using wrong HTTP method"""
         resp = self.client.post("/customers/1", json={})
         self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_internal_server_error(self):
+        """It should return 500 on internal server error"""
         resp = self.client.get("/error")
         self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         data = resp.get_json()
         self.assertEqual(data["error"], "Internal Server Error")
 
+    def test_activate_customer(self):
+        """It should Activate a Customer"""
+        customer = CustomerFactory(active=False)
+        customer.create()
+
+        resp = self.client.put(f"/customers/{customer.id}/activate")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(data["active"], True)
+
+    def test_activate_customer_not_found(self):
+        """It should return 404 when activating a Customer that does not exist"""
+        resp = self.client.put("/customers/99999/activate")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
