@@ -192,3 +192,59 @@ class TestCustomerService(TestCase):
         """It should return 404 when activating a Customer that does not exist"""
         resp = self.client.put("/customers/99999/activate")
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    ######################################################################
+    #  Q U E R Y   B Y   N A M E   T E S T S
+    ######################################################################
+
+    def test_query_customers_by_name(self):
+        """It should return only customers matching the name query"""
+        self.client.post("/customers", json={
+            "name": "Alice", "userid": "alice1", "email": "alice1@example.com",
+        })
+        self.client.post("/customers", json={
+            "name": "Bob", "userid": "bob1", "email": "bob1@example.com",
+        })
+
+        resp = self.client.get("/customers?name=Alice")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["name"], "Alice")
+
+    def test_query_customers_by_name_not_found(self):
+        """It should return an empty list when no customers match the name"""
+        self.client.post("/customers", json={
+            "name": "Alice", "userid": "alice2", "email": "alice2@example.com",
+        })
+
+        resp = self.client.get("/customers?name=Zzzzzz")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 0)
+
+    def test_query_customers_by_name_case_insensitive(self):
+        """It should match names regardless of case"""
+        self.client.post("/customers", json={
+            "name": "Alice", "userid": "alice3", "email": "alice3@example.com",
+        })
+
+        resp = self.client.get("/customers?name=alice")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["name"], "Alice")
+
+    def test_list_customers_no_query_returns_all(self):
+        """It should return all customers when no name query is provided"""
+        self.client.post("/customers", json={
+            "name": "Alice", "userid": "alice4", "email": "alice4@example.com",
+        })
+        self.client.post("/customers", json={
+            "name": "Bob", "userid": "bob2", "email": "bob2@example.com",
+        })
+
+        resp = self.client.get("/customers")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 2)

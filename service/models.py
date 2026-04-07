@@ -127,7 +127,7 @@ class Customer(db.Model):
             name (string): the name of the Customers you want to match
         """
         logger.info("Processing name query for %s ...", name)
-        return cls.query.filter(cls.name == name)
+        return cls.query.filter(cls.name.ilike(name))
 
     @classmethod
     def find_by_userid(cls, userid):
