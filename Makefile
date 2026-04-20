@@ -46,6 +46,11 @@ run: ## Run the service
 	$(info Starting service...)
 	honcho start
 
+.PHONY: bdd
+bdd: ## Run BDD tests with Behave
+	$(info Running BDD tests...)
+	behave
+
 .PHONY: secret
 secret: ## Generate a secret hex key
 	$(info Generating a new secret key...)
