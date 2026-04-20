@@ -15,16 +15,17 @@
 ######################################################################
 
 """
-Test cases for CustomerProfileModel Model
+Test cases for Pet Model
 """
 
 # pylint: disable=duplicate-code
 import os
 import logging
 from unittest import TestCase
+from unittest.mock import patch
 from wsgi import app
-from service.models import db, CustomerProfileModel, DataValidationError
-from .factories import CustomerProfileFactory
+from service.models import Customer, db, DataValidationError
+from .factories import CustomerFactory
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
@@ -32,11 +33,11 @@ DATABASE_URI = os.getenv(
 
 
 ######################################################################
-#  C U S T O M E R P R O F I L E   M O D E L   T E S T   C A S E S
+#  Customer   M O D E L   T E S T   C A S E S
 ######################################################################
 # pylint: disable=too-many-public-methods
-class TestCustomerProfileModel(TestCase):
-    """Test Cases for CustomerProfileModel"""
+class TestCustomerModel(TestCase):
+    """Test Cases for Customer Model"""
 
     @classmethod
     def setUpClass(cls):
@@ -54,7 +55,7 @@ class TestCustomerProfileModel(TestCase):
 
     def setUp(self):
         """This runs before each test"""
-        db.session.query(CustomerProfileModel).delete()  # clean up the last tests
+        db.session.query(Customer).delete()  # clean up the last tests
         db.session.commit()
 
     def tearDown(self):

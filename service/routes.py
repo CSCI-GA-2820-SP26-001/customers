@@ -15,15 +15,15 @@
 ######################################################################
 
 """
-CustomerProfileModel Service
+Customer Service
 
 This service implements a REST API that allows you to Create, Read, Update
-and Delete CustomerProfileModel
+and Delete Customer
 """
 
 from flask import jsonify, request, url_for, abort
 from flask import current_app as app  # Import Flask application
-from service.models import CustomerProfileModel
+from service.models import Customer
 from service.common import status  # HTTP Status Codes
 
 
@@ -33,10 +33,25 @@ from service.common import status  # HTTP Status Codes
 @app.route("/")
 def index():
     """Root URL response"""
-    return (
-        "Reminder: return some useful information in json format about the service here",
-        status.HTTP_200_OK,
-    )
+    app.logger.info("Request for root URL received.")
+
+    response = {
+        "name": "Customers Service",
+        "version": "1.0",
+        "customers_url": "/customers",
+    }
+
+    return jsonify(response), status.HTTP_200_OK
+
+
+######################################################################
+# HEALTH
+######################################################################
+@app.route("/health")
+def health():
+    """Health check for monitors (e.g. Kubernetes liveness/readiness)"""
+    app.logger.info("Health check requested")
+    return jsonify({"status": "OK"}), status.HTTP_200_OK
 
 
 ######################################################################
@@ -44,118 +59,153 @@ def index():
 ######################################################################
 
 
-######################################################################
-# C R E A T E   A   C U S T O M E R   P R O F I L E
-######################################################################
-@app.route("/customerprofiles", methods=["POST"])
-def create_customerprofiles():
-    """
-    Create a Customer Profile
-    This endpoint will create a Customer Profile based the data in the body that is posted
-    """
-    app.logger.info("Request to Create a Customer Profile...")
-    check_content_type("application/json")
-    profile = CustomerProfileModel()
-    # Get the data from the request and deserialize it
-    data = request.get_json()
-    app.logger.info("Processing: %s", data)
-    profile.deserialize(data)
-
-    # Check for duplicate userid
-    if CustomerProfileModel.query.filter_by(userid=profile.userid).first():
-        abort(status.HTTP_409_CONFLICT, description="userid already exists")
-
-    # Check for duplicate email
-    if CustomerProfileModel.query.filter_by(email=profile.email).first():
-        abort(status.HTTP_409_CONFLICT, description="email already exists")
-
-    # Save the new Customer Profile to the database
-    profile.create()
-    app.logger.info("CustomerProfile with new id [%s] saved!", profile.id)
-    # Return the location of the new Customer Profile
-    location_url = url_for(
-        "get_customerprofiles", customer_id=profile.id, _external=True
-    )
-    return (
-        jsonify(profile.serialize()),
-        status.HTTP_201_CREATED,
-        {"Location": location_url},
-    )
-
-
-######################################################################
-# Checks the ContentType of a request
-######################################################################
-def check_content_type(content_type) -> None:
-    """Checks that the media type is correct"""
+def check_content_type(expected: str) -> None:
+    """Checks that the request Content-Type matches what the API expects."""
     if "Content-Type" not in request.headers:
         app.logger.error("No Content-Type specified.")
         abort(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            f"Content-Type must be {content_type}",
+            description=f"Content-Type must be {expected}",
         )
-    if request.headers["Content-Type"] == content_type:
-        return
-    app.logger.error("Invalid Content-Type: %s", request.headers["Content-Type"])
-    abort(
-        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-        f"Content-Type must be {content_type}",
-    )
+    if request.headers["Content-Type"] != expected:
+        app.logger.error("Invalid Content-Type: %s", request.headers["Content-Type"])
+        abort(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            description=f"Content-Type must be {expected}",
+        )
 
 
 ######################################################################
-# Logs error messages before aborting
+# CREATE A NEW CUSTOMER
 ######################################################################
-def error(status_code, reason):
-    """Logs the error and then aborts"""
-    app.logger.error(reason)
-    abort(status_code, reason)
+@app.route("/customers", methods=["POST"])
+def create_customer():
+    """Create a new Customer"""
+    app.logger.info("Request to create a customer")
+    check_content_type("application/json")
+
+    data = request.get_json()
+    app.logger.debug("Received data: %s", data)
+
+    try:
+        customer = Customer()
+        customer.deserialize(data)
+        customer.create()
+        app.logger.info("Created customer with id: %s", customer.id)
+        return (
+            jsonify(customer.serialize()),
+            status.HTTP_201_CREATED,
+            {
+                "Location": url_for(
+                    "get_customer", customer_id=customer.id, _external=True
+                )
+            },
+        )
+    except Exception as e:
+        app.logger.error("Error creating customer: %s", str(e))
+        abort(status.HTTP_400_BAD_REQUEST, description=str(e))
+
+
+######################################################################
+# READ A CUSTOMER
+######################################################################
+@app.route("/customers/<int:customer_id>", methods=["GET"])
+def get_customer(customer_id):
+    """Get a Customer by id"""
+    app.logger.info("Request to get customer with id: %s", customer_id)
+    customer = Customer.find(customer_id)
+    if not customer:
+        app.logger.warning("Customer with id: %s not found", customer_id)
+        abort(status.HTTP_404_NOT_FOUND, description="Customer not found")
+
+    app.logger.info("Returning customer with id: %s", customer_id)
+    return jsonify(customer.serialize()), status.HTTP_200_OK
+
+
+######################################################################
+# UPDATE A CUSTOMER
+######################################################################
+@app.route("/customers/<int:customer_id>", methods=["PUT"])
+def update_customer(customer_id):
+    """Update a Customer"""
+    app.logger.info("Request to update customer with id: %s", customer_id)
+    check_content_type("application/json")
+
+    customer = Customer.find(customer_id)
+    if not customer:
+        app.logger.warning("Customer with id: %s not found", customer_id)
+        abort(status.HTTP_404_NOT_FOUND, description="Customer not found")
+
+    data = request.get_json()
+    app.logger.debug("Received data: %s", data)
+
+    try:
+        customer.deserialize(data)
+        customer.update()
+        app.logger.info("Updated customer with id: %s", customer_id)
+        return jsonify(customer.serialize()), status.HTTP_200_OK
+    except Exception as e:
+        app.logger.error("Error updating customer: %s", str(e))
+        abort(status.HTTP_400_BAD_REQUEST, description=str(e))
+
+
+######################################################################
+# DELETE A CUSTOMER
+######################################################################
+@app.route("/customers/<int:customer_id>", methods=["DELETE"])
+def delete_customer(customer_id):
+    """Delete a Customer"""
+    app.logger.info("Request to delete customer with id: %s", customer_id)
+    customer = Customer.find(customer_id)
+    if customer:
+        customer.delete()
+        app.logger.info("Deleted customer with id: %s", customer_id)
+
+    return "", status.HTTP_204_NO_CONTENT
+
+
+######################################################################
+# LIST ALL CUSTOMERS
+######################################################################
+@app.route("/customers", methods=["GET"])
+def list_customers():
+    """Get all Customers, optionally filtered by name"""
+    app.logger.info("Request to list all customers")
+    name = request.args.get("name")
+    if name:
+        app.logger.info("Filtering customers by name: %s", name)
+        customers = Customer.find_by_name(name)
+    else:
+        customers = Customer.all()
+    results = [customer.serialize() for customer in customers]
+    app.logger.info("Returning %d customers", len(results))
+    return jsonify(results), status.HTTP_200_OK
 
 
 @app.route("/error")
 def trigger_error():
-    """Triggers a 500 error for testing purposes"""
-    abort(status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal Server Error")
+    """Intentionally triggers a server error for testing"""
+    app.logger.info("Triggering internal server error")
+    abort(status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 ######################################################################
-# R E A D   A   C U S T O M E R   P R O F I L E
+# A C T I V A T E   A   C U S T O M E R
 ######################################################################
-@app.route("/customerprofiles/<int:customer_id>", methods=["GET"])
-def get_customerprofiles(customer_id):
+@app.route("/customers/<int:customer_id>/activate", methods=["PUT"])
+def activate_customer(customer_id):
     """
-    Retrieve a Customer Profile
-    This endpoint will return a Customer Profile based on its id
+    Activate a Customer
+    This endpoint will set active=True on a Customer based on its id
     """
-    app.logger.info("Request to Retrieve a Customer Profile with id [%s]", customer_id)
-    profile = CustomerProfileModel.find(customer_id)
-    if not profile:
-        app.logger.warning("Customer Profile with id [%s] was not found", customer_id)
+    app.logger.info("Request to Activate Customer with id [%s]", customer_id)
+    customer = Customer.find(customer_id)
+    if not customer:
+        app.logger.warning("Customer with id [%s] was not found", customer_id)
         abort(
             status.HTTP_404_NOT_FOUND, f"Customer with id '{customer_id}' was not found"
         )
-    app.logger.info("Returning Customer Profile with id [%s]", customer_id)
-    return jsonify(profile.serialize()), status.HTTP_200_OK
-
-
-######################################################################
-# D E L E T E   A   C U S T O M E R   P R O F I L E
-######################################################################
-
-
-@app.route("/customerprofiles/<int:customer_id>", methods=["DELETE"])
-def delete_customerprofiles(customer_id):
-    """
-    Delete a Customer Profile
-    This endpoint will delete a Customer Profile based on its id
-    """
-    app.logger.info("Request to Delete a Customer Profile with id [%s]", customer_id)
-    profile = CustomerProfileModel.find(customer_id)
-    if not profile:
-        app.logger.warning("Customer Profile with id [%s] was not found", customer_id)
-        abort(
-            status.HTTP_404_NOT_FOUND, f"Customer with id '{customer_id}' was not found"
-        )
-    profile.delete()
-    app.logger.info("Customer Profile with id [%s] deleted", customer_id)
-    return {}, status.HTTP_204_NO_CONTENT
+    customer.active = True
+    customer.update()
+    app.logger.info("Customer with id [%s] has been activated", customer_id)
+    return jsonify(customer.serialize()), status.HTTP_200_OK

@@ -19,3 +19,7 @@ USER $USERNAME
 # Install user mode tools
 COPY .devcontainer/scripts/install-tools.sh /tmp/
 RUN cd /tmp && bash ./install-tools.sh
+
+# Copy application source code
+WORKDIR /app
+COPY . .

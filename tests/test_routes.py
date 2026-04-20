@@ -15,7 +15,7 @@
 ######################################################################
 
 """
-CustomerProfile API Service Test Suite
+TestCustomer API Service Test Suite
 """
 
 # pylint: disable=duplicate-code
@@ -24,20 +24,19 @@ import logging
 from unittest import TestCase
 from wsgi import app
 from service.common import status
-from service.models import db, CustomerProfileModel
-from .factories import CustomerProfileFactory
+from service.models import db, Customer
+from .factories import CustomerFactory
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
 )
-BASE_URL = "/customerprofiles"
 
 
 ######################################################################
 #  T E S T   C A S E S
 ######################################################################
 # pylint: disable=too-many-public-methods
-class TestYourResourceService(TestCase):
+class TestCustomerService(TestCase):
     """REST API Server Tests"""
 
     @classmethod
@@ -45,7 +44,6 @@ class TestYourResourceService(TestCase):
         """Run once before all tests"""
         app.config["TESTING"] = True
         app.config["DEBUG"] = False
-        # Set up the test database
         app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
         app.logger.setLevel(logging.CRITICAL)
         app.app_context().push()
@@ -58,7 +56,7 @@ class TestYourResourceService(TestCase):
     def setUp(self):
         """Runs before each test"""
         self.client = app.test_client()
-        db.session.query(CustomerProfileModel).delete()  # clean up the last tests
+        db.session.query(Customer).delete()
         db.session.commit()
 
     def tearDown(self):
@@ -70,179 +68,168 @@ class TestYourResourceService(TestCase):
     ######################################################################
 
     def test_index(self):
-        """It should call the home page"""
+        """It should return service metadata on the root URL"""
         resp = self.client.get("/")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertIsNotNone(data)
+        self.assertEqual(data["name"], "Customers Service")
+        self.assertEqual(data["version"], "1.0")
+        self.assertEqual(data["customers_url"], "/customers")
 
-    def test_create_customerprofile(self):
-        """It should Create a new CustomerProfile"""
-        test_customerprofile = CustomerProfileFactory()
-        logging.debug("Test CustomerProfile: %s", test_customerprofile.serialize())
-        response = self.client.post(
-            BASE_URL,
-            json=test_customerprofile.serialize(),
-            content_type="application/json",
+    def test_health(self):
+        """It should return JSON health status for probes"""
+        resp = self.client.get("/health")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.content_type, "application/json")
+        data = resp.get_json()
+        self.assertEqual(data, {"status": "OK"})
+
+    def test_create_customer(self):
+        """It should Create a new Customer"""
+        payload = {
+            "name": "Alice",
+            "userid": "alice1",
+            "email": "alice1@example.com",
+            "address": "1 Main St",
+        }
+        resp = self.client.post("/customers", json=payload)
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        data = resp.get_json()
+        self.assertEqual(data["name"], "Alice")
+        self.assertEqual(data["userid"], "alice1")
+
+    def test_list_customers(self):
+        """It should List all Customers"""
+        CustomerFactory().create()
+        CustomerFactory().create()
+
+        resp = self.client.get("/customers")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 2)
+
+    def test_get_customer(self):
+        """It should Get a Customer by id"""
+        customer = CustomerFactory()
+        customer.create()
+
+        resp = self.client.get(f"/customers/{customer.id}")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(data["id"], customer.id)
+
+    def test_update_customer(self):
+        """It should Update a Customer"""
+        customer = CustomerFactory()
+        customer.create()
+        payload = {
+            "name": "Bob",
+            "userid": customer.userid,
+            "email": customer.email,
+            "address": "99 Lane",
+        }
+
+        resp = self.client.put(f"/customers/{customer.id}", json=payload)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        updated = Customer.find(customer.id)
+        self.assertEqual(updated.name, "Bob")
+
+    def test_delete_customer(self):
+        """It should Delete a Customer"""
+        customer = CustomerFactory()
+        customer.create()
+
+        resp = self.client.delete(f"/customers/{customer.id}")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.assertIsNone(Customer.find(customer.id))
+
+    def test_update_customer_not_found(self):
+        """It should return 404 when updating a Customer that does not exist"""
+        resp = self.client.put(
+            "/customers/99999",
+            json={"name": "NotThere", "userid": "x", "email": "x@example.com"},
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
-        # Make sure location header is set
-        location = response.headers.get("Location", None)
-        self.assertIsNotNone(location)
-
-        # Check the data is correct
-        new_customerprofile = response.get_json()
-        self.assertEqual(new_customerprofile["name"], test_customerprofile.name)
-        self.assertEqual(new_customerprofile["userid"], test_customerprofile.userid)
-        self.assertEqual(new_customerprofile["email"], test_customerprofile.email)
-        self.assertEqual(new_customerprofile["address"], test_customerprofile.address)
-        self.assertEqual(new_customerprofile["active"], test_customerprofile.active)
+    def test_get_customer_not_found(self):
+        """It should return 404 when Customer is not found"""
+        resp = self.client.get("/customers/99999")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_bad_content_type(self):
-        """It should return 415 when Content-Type is not application/json"""
-        response = self.client.post(
-            BASE_URL,
-            json={},
-            content_type="text/html",
-        )
-        self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        """It should return 415 when Content-Type is wrong"""
+        resp = self.client.post("/customers", data="{}", content_type="text/plain")
+        self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     def test_no_content_type(self):
         """It should return 415 when no Content-Type is set"""
-        response = self.client.post(
-            BASE_URL,
-            data="bad data",
-        )
-        self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        resp = self.client.post("/customers", data='{"name":"NoCT"}')
+        self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
-    def test_missing_required_name(self):
-        """It should return 400 when name is missing"""
-        data = CustomerProfileFactory().serialize()
-        del data["name"]
-        response = self.client.post(
-            BASE_URL, json=data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_missing_required_userid(self):
-        """It should return 400 when userid is missing"""
-        data = CustomerProfileFactory().serialize()
-        del data["userid"]
-        response = self.client.post(
-            BASE_URL, json=data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_missing_required_email(self):
-        """It should return 400 when email is missing"""
-        data = CustomerProfileFactory().serialize()
-        del data["email"]
-        response = self.client.post(
-            BASE_URL, json=data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_duplicate_userid(self):
-        """It should return 409 when userid already exists"""
-        original = CustomerProfileFactory()
-        response = self.client.post(
-            BASE_URL, json=original.serialize(), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        duplicate = CustomerProfileFactory().serialize()
-        duplicate["userid"] = original.userid
-        response = self.client.post(
-            BASE_URL, json=duplicate, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-
-    def test_duplicate_email(self):
-        """It should return 409 when email already exists"""
-        original = CustomerProfileFactory()
-        response = self.client.post(
-            BASE_URL, json=original.serialize(), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        duplicate = CustomerProfileFactory().serialize()
-        duplicate["email"] = original.email
-        response = self.client.post(
-            BASE_URL, json=duplicate, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+    def test_create_customer_missing_fields(self):
+        """It should return 400 when required fields are missing"""
+        resp = self.client.post("/customers", json={"name": "NoUser"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_method_not_allowed(self):
         """It should return 405 when using wrong HTTP method"""
-        response = self.client.delete(BASE_URL)
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        resp = self.client.post("/customers/1", json={})
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_internal_server_error(self):
         """It should return 500 on internal server error"""
-        # Trigger a 500 by calling a route that forces an error
-        response = self.client.get("/error")
-        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        resp = self.client.get("/error")
+        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        data = resp.get_json()
+        self.assertEqual(data["error"], "Internal Server Error")
 
-    def test_error_utility(self):
-        """It should log and abort with the given status code"""
-        from service.routes import error
+    def test_activate_customer(self):
+        """It should Activate a Customer"""
+        customer = CustomerFactory(active=False)
+        customer.create()
 
-        with self.assertRaises(Exception):
-            error(status.HTTP_400_BAD_REQUEST, "test error message")
+        resp = self.client.put(f"/customers/{customer.id}/activate")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(data["active"], True)
 
-    def test_get_customerprofile(self):
-        """It should return a Customer Profile by id"""
+    def test_activate_customer_not_found(self):
+        """It should return 404 when activating a Customer that does not exist"""
+        resp = self.client.put("/customers/99999/activate")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
-        # First create a profile
-        test_customerprofile = CustomerProfileFactory()
-        response = self.client.post(
-            BASE_URL,
-            json=test_customerprofile.serialize(),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        new_profile = response.get_json()
-        customer_id = new_profile["id"]
+    def test_query_customers_by_name(self):
+        """It should return customers filtered by name"""
+        customer1 = CustomerFactory(name="Alice")
+        customer2 = CustomerFactory(name="Bob")
+        customer1.create()
+        customer2.create()
 
-        # Now retrieve it
-        response = self.client.get(f"{BASE_URL}/{customer_id}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(data["name"], test_customerprofile.name)
-        self.assertEqual(data["userid"], test_customerprofile.userid)
-        self.assertEqual(data["email"], test_customerprofile.email)
-        self.assertEqual(data["address"], test_customerprofile.address)
-        self.assertEqual(data["active"], test_customerprofile.active)
+        resp = self.client.get("/customers?name=Alice")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["name"], "Alice")
 
-    def test_get_customerprofile_not_found(self):
-        """It should return 404 when Customer Profile is not found"""
-        response = self.client.get(f"{BASE_URL}/0")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        data = response.get_json()
-        self.assertIn("not found", data["message"].lower())
+    def test_query_customers_by_name_case_insensitive(self):
+        """It should return customers filtered by name case-insensitively"""
+        customer = CustomerFactory(name="Alice")
+        customer.create()
 
-    def test_delete_customerprofile(self):
-        """It should Delete a Customer Profile"""
-        # First create a profile
-        test_customerprofile = CustomerProfileFactory()
-        response = self.client.post(
-            BASE_URL,
-            json=test_customerprofile.serialize(),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        customer_id = response.get_json()["id"]
+        resp = self.client.get("/customers?name=alice")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 1)
 
-        # Now delete it
-        response = self.client.delete(f"{BASE_URL}/{customer_id}")
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    def test_query_customers_by_name_no_match(self):
+        """It should return empty list when no customers match"""
+        customer = CustomerFactory(name="Alice")
+        customer.create()
 
-        # Verify it's gone
-        response = self.client.get(f"{BASE_URL}/{customer_id}")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_delete_customerprofile_not_found(self):
-        """It should return 404 when deleting a Customer Profile that does not exist"""
-        response = self.client.delete(f"{BASE_URL}/0")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        data = response.get_json()
-        self.assertIn("not found", data["message"].lower())
+        resp = self.client.get("/customers?name=NoMatch")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 0)

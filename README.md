@@ -1,64 +1,102 @@
-# NYU DevOps Project Template
+# Customers Service
+
+[![CI](https://github.com/CSCI-GA-2820-SP26-001/customers/actions/workflows/ci.yml/badge.svg)](https://github.com/CSCI-GA-2820-SP26-001/customers/actions)
+[![codecov](https://codecov.io/gh/CSCI-GA-2820-SP26-001/customers/branch/master/graph/badge.svg)](https://codecov.io/gh/CSCI-GA-2820-SP26-001/customers)
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Language-Python-blue.svg)](https://python.org/)
 
-This is a skeleton you can use to start your projects.
+REST API for **Customer** records (Flask + SQLAlchemy + PostgreSQL). All responses are **JSON**, including errors (see `service/common/error_handlers.py`).
 
-**Note:** _Feel free to overwrite this `README.md` file with the one that describes your project._
+**Base URL (local):** `http://localhost:8080`
 
-## Overview
+---
 
-This project template contains starter code for your class project. The `/service` folder contains your `models.py` file for your model and a `routes.py` file for your service. The `/tests` folder has test case starter code for testing the model and the service separately. All you need to do is add your functionality. You can use the [lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd) for code examples to copy from.
+## API reference
 
-## Automatic Setup
+| Method | Path | Description |
+|--------|------|-------------|
+| **GET** | `/` | Service metadata JSON (`name`, `version`, `customers_url`) |
+| **GET** | `/customers` | List all customers (JSON array; `200`; empty DB → `[]`) |
+| **POST** | `/customers` | Create a customer (`201` + `Location` header) |
+| **GET** | `/customers/<id>` | Read one customer (`200` or `404`) |
+| **PUT** | `/customers/<id>` | Replace a customer (`200` or `404`; body same shape as create) |
+| **DELETE** | `/customers/<id>` | Delete (`204` empty body) |
+| **GET** | `/error` | Test-only route that triggers `500` (for error-handler tests) |
 
-The best way to use this repo is to start your own repo using it as a git template. To do this just press the green **Use this template** button in GitHub and this will become the source for your repository.
+### Request headers
 
-## Manual Setup
+- **POST** and **PUT** require `Content-Type: application/json`.
 
-You can also clone this repository and then copy and paste the starter code into your project repo folder on your local computer. Be careful not to copy over your own `README.md` file so be selective in what you copy.
+### JSON body (POST / PUT)
 
-There are 4 hidden files that you will need to copy manually if you use the Mac Finder or Windows Explorer to copy files from this folder into your repo folder.
+| Field | Type | Required |
+|-------|------|----------|
+| `name` | string | yes |
+| `userid` | string | yes (unique) |
+| `email` | string | yes (unique) |
+| `address` | string | no |
+| `active` | boolean | no (default `true`) |
+| `product_attributes` | string | no |
+| `assigned_csm` | string | no |
+| `arr_value` | number | no |
 
-These should be copied using a bash shell as follows:
+`id` is assigned by the server and returned in responses.
+
+### Typical HTTP status codes
+
+| Code | When |
+|------|------|
+| `200` | OK (GET list/one, PUT success) |
+| `201` | Created (POST) |
+| `204` | No content (DELETE) |
+| `400` | Bad request / validation (e.g. create/update) |
+| `404` | Not found (GET/PUT one customer) |
+| `415` | Wrong or missing `Content-Type` for POST/PUT |
+| `500` | Server error (e.g. `/error` test route) |
+
+---
+
+## Run locally
+
+**Prerequisites:** Python 3.x, PostgreSQL (or set `DATABASE_URI`).
 
 ```bash
-    cp .gitignore  ../<your_repo_folder>/
-    cp .flaskenv ../<your_repo_folder>/
-    cp .gitattributes ../<your_repo_folder>/
+pipenv install --dev
+export DATABASE_URI="postgresql+psycopg://postgres:postgres@localhost:5432/postgres"
+export PORT=8080
+honcho start
 ```
 
-## Contents
+Open `http://localhost:8080/`.
 
-The project contains the following:
+**VS Code Dev Containers:** PostgreSQL is defined in `.devcontainer/docker-compose.yml` — use **Reopen in Container**, then run from `/app`.
+
+---
+
+## Test & lint
+
+```bash
+export DATABASE_URI="postgresql+psycopg://postgres:postgres@localhost:5432/testdb"
+make test
+make lint
+```
+
+---
+
+## Project layout
 
 ```text
-.gitignore          - this will ignore vagrant and other metadata files
-.flaskenv           - Environment variables to configure Flask
-.gitattributes      - File to gix Windows CRLF issues
-.devcontainers/     - Folder with support for VSCode Remote Containers
-dot-env-example     - copy to .env to use environment variables
-pyproject.toml      - Poetry list of Python libraries required by your code
-
-service/                   - service python package
-├── __init__.py            - package initializer
-├── config.py              - configuration parameters
-├── models.py              - module with business models
-├── routes.py              - module with service routes
-└── common                 - common code package
-    ├── cli_commands.py    - Flask command to recreate all tables
-    ├── error_handlers.py  - HTTP error handling code
-    ├── log_handlers.py    - logging setup code
-    └── status.py          - HTTP status constants
-
-tests/                     - test cases package
-├── __init__.py            - package initializer
-├── factories.py           - Factory for testing with fake objects
-├── test_cli_commands.py   - test suite for the CLI
-├── test_models.py         - test suite for business models
-└── test_routes.py         - test suite for service routes
+service/
+  models.py       # Customer model
+  routes.py       # Flask routes
+  common/         # error_handlers, status, logging, CLI
+tests/
+  test_models.py
+  test_routes.py
 ```
+
+---
 
 ## License
 
