@@ -50,5 +50,14 @@ jobs:
       - name: Run lint checks
         run: make lint
 
-      - name: Run unit tests
-        run: make test
+      - name: Run unit tests with coverage
+        run: |
+          export RETRY_COUNT=1
+          pytest --pspec --cov=service --cov-fail-under=95 --cov-report=xml --disable-warnings
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
