@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customers
+  labels:
+    app: customers
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customers
+  template:
+    metadata:
+      labels:
+        app: customers
+    spec:
+      containers:
+        - name: customers
+          image: customers:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
