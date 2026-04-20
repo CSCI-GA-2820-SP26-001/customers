@@ -34,7 +34,7 @@ class Customer(db.Model):
     product_attributes = db.Column(db.String(256), nullable=True)
     assigned_csm = db.Column(db.String(128), nullable=True)
     arr_value = db.Column(db.Float(), nullable=True)
-    
+
     def __repr__(self):
         return f"<Customer {self.name} id=[{self.id}]>"
 
@@ -77,7 +77,17 @@ class Customer(db.Model):
 
     def serialize(self):
         """Serializes a Customer into a dictionary"""
-        return {"id": self.id, "name": self.name, "userid": self.userid, "email": self.email, "address": self.address, "active": self.active, "product_attributes": self.product_attributes, "assigned_csm": self.assigned_csm, "arr_value": self.arr_value}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "userid": self.userid,
+            "email": self.email,
+            "address": self.address,
+            "active": self.active,
+            "product_attributes": self.product_attributes,
+            "assigned_csm": self.assigned_csm,
+            "arr_value": self.arr_value,
+        }
 
     def deserialize(self, data):
         """Deserializes a Customer from a dictionary"""
@@ -96,10 +106,13 @@ class Customer(db.Model):
         except AttributeError as error:
             raise DataValidationError("Invalid attribute: " + error.args[0]) from error
         except KeyError as error:
-            raise DataValidationError("Invalid Customer: missing " + error.args[0]) from error
+            raise DataValidationError(
+                "Invalid Customer: missing " + error.args[0]
+            ) from error
         except TypeError as error:
             raise DataValidationError(
-                "Invalid Customer: body of request contained bad or no data " + str(error)
+                "Invalid Customer: body of request contained bad or no data "
+                + str(error)
             ) from error
         return self
 
@@ -127,7 +140,7 @@ class Customer(db.Model):
             name (string): the name of the Customers you want to match
         """
         logger.info("Processing name query for %s ...", name)
-        return cls.query.filter(cls.name == name)
+        return cls.query.filter(cls.name.ilike(name))
 
     @classmethod
     def find_by_userid(cls, userid):

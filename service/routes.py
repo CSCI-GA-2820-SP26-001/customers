@@ -45,6 +45,16 @@ def index():
 
 
 ######################################################################
+# HEALTH
+######################################################################
+@app.route("/health")
+def health():
+    """Health check for monitors (e.g. Kubernetes liveness/readiness)"""
+    app.logger.info("Health check requested")
+    return jsonify({"status": "OK"}), status.HTTP_200_OK
+
+
+######################################################################
 #  R E S T   A P I   E N D P O I N T S
 ######################################################################
 
@@ -159,9 +169,14 @@ def delete_customer(customer_id):
 ######################################################################
 @app.route("/customers", methods=["GET"])
 def list_customers():
-    """Get all Customers"""
+    """Get all Customers, optionally filtered by name"""
     app.logger.info("Request to list all customers")
-    customers = Customer.all()
+    name = request.args.get("name")
+    if name:
+        app.logger.info("Filtering customers by name: %s", name)
+        customers = Customer.find_by_name(name)
+    else:
+        customers = Customer.all()
     results = [customer.serialize() for customer in customers]
     app.logger.info("Returning %d customers", len(results))
     return jsonify(results), status.HTTP_200_OK
