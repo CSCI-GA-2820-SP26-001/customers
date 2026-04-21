@@ -5,7 +5,7 @@ Test Factory to make fake objects for testing
 import factory
 from factory import Faker
 from factory.fuzzy import FuzzyChoice
-from service.models import CustomerProfileModel
+from service.models import Customer
 
 
 class CustomerFactory(factory.Factory):
