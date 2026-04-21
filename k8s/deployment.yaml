@@ -20,6 +20,9 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["gunicorn"]
           args: ["--bind", "0.0.0.0:8080", "wsgi:app"]
+          envFrom:
+            - secretRef:
+                name: postgres-creds
           ports:
             - containerPort: 8080
           resources:
