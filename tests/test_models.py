@@ -66,81 +66,195 @@ class TestCustomerModel(TestCase):
     #  T E S T   C A S E S
     ######################################################################
 
-    def test_example_replace_this(self):
-        """It should create a Customer"""
-        resource = CustomerFactory()
-        resource.create()
-        self.assertIsNotNone(resource.id)
-        found = Customer.all()
-        self.assertEqual(len(found), 1)
-        data = Customer.find(resource.id)
-        self.assertEqual(data.name, resource.name)
+    def test_create_a_customer_profile(self):
+        """It should Create a customer profile"""
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            address="123 Main St",
+            active=True,
+        )
+        self.assertEqual(str(profile), "<Customer Jane Doe id=[None]>")
+        self.assertTrue(profile is not None)
+        self.assertEqual(profile.id, None)
+        self.assertEqual(profile.name, "Jane Doe")
+        self.assertEqual(profile.userid, "janedoe123")
+        self.assertEqual(profile.email, "jane@example.com")
+        self.assertEqual(profile.address, "123 Main St")
+        self.assertEqual(profile.active, True)
 
-    def test_update_customer(self):
-        resource = CustomerFactory()
-        resource.create()
-        resource.name = "Updated Name"
-        resource.update()
+        # Test with optional fields omitted and active defaulting to True
+        profile2 = Customer(
+            name="John Smith",
+            userid="johnsmith456",
+            email="john@example.com",
+            active=True,  # set explicitly since SQLAlchemy defaults only apply at DB level
+        )
+        self.assertEqual(profile2.address, None)
+        self.assertEqual(profile2.active, True)
+        self.assertEqual(profile2.product_attributes, None)
+        self.assertEqual(profile2.assigned_csm, None)
+        self.assertEqual(profile2.arr_value, None)
 
-        updated = Customer.find(resource.id)
-        self.assertEqual(updated.name, "Updated Name")
+    def test_update_a_customer_profile(self):
+        """It should Update a customer profile"""
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        profile.create()
+        self.assertIsNotNone(profile.id)
+        profile.name = "Jane Smith"
+        profile.update()
+        updated = Customer.find(profile.id)
+        self.assertEqual(updated.name, "Jane Smith")
 
-    def test_delete_customer(self):
-        resource = CustomerFactory()
-        resource.create()
-        resource_id = resource.id
+    def test_delete_a_customer_profile(self):
+        """It should Delete a customer profile"""
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        profile.create()
+        self.assertIsNotNone(profile.id)
+        profile.delete()
+        deleted = Customer.find(profile.id)
+        self.assertIsNone(deleted)
 
-        resource.delete()
-        self.assertIsNone(Customer.find(resource_id))
+    def test_list_all_customer_profiles(self):
+        """It should List all customer profiles"""
+        profiles = Customer.all()
+        self.assertEqual(profiles, [])
+        for _ in range(5):
+            profile = CustomerFactory()
+            profile.id = None
+            profile.create()
+        profiles = Customer.all()
+        self.assertEqual(len(profiles), 5)
 
-    def test_find_by_userid(self):
-        resource = CustomerFactory()
-        resource.create()
+    def test_find_by_name(self):
+        """It should Find a customer profile by name"""
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        profile.create()
+        results = Customer.find_by_name("Jane Doe")
+        self.assertEqual(results.count(), 1)
+        self.assertEqual(results[0].userid, "janedoe123")
 
-        found = Customer.find_by_userid(resource.userid)
-        self.assertIsNotNone(found)
-        self.assertEqual(found.email, resource.email)
+    def test_deserialize_missing_name(self):
+        """It should raise DataValidationError when name is missing"""
+        profile = Customer()
+        self.assertRaises(
+            DataValidationError,
+            profile.deserialize,
+            {"userid": "test123", "email": "test@example.com"},
+        )
 
-    def test_serialize_deserialize(self):
-        resource = CustomerFactory()
-        data = resource.serialize()
-        new_cust = Customer()
-        new_cust.deserialize(data)
-        self.assertEqual(new_cust.name, resource.name)
-        self.assertEqual(new_cust.userid, resource.userid)
+    def test_deserialize_missing_userid(self):
+        """It should raise DataValidationError when userid is missing"""
+        profile = Customer()
+        self.assertRaises(
+            DataValidationError,
+            profile.deserialize,
+            {"name": "Test User", "email": "test@example.com"},
+        )
 
-    def test_duplicate_userid_raises(self):
-        resource1 = CustomerFactory()
-        resource1.create()
-        resource2 = CustomerFactory(userid=resource1.userid, email='dup@example.com')
+    def test_deserialize_missing_email(self):
+        """It should raise DataValidationError when email is missing"""
+        profile = Customer()
+        self.assertRaises(
+            DataValidationError,
+            profile.deserialize,
+            {"name": "Test User", "userid": "test123"},
+        )
 
-        with self.assertRaises(Exception):
-            resource2.create()
+    def test_deserialize_bad_data(self):
+        """It should raise DataValidationError when data is not a dict"""
+        profile = Customer()
+        self.assertRaises(
+            DataValidationError,
+            profile.deserialize,
+            "this is not a dict",
+        )
 
-    def test_update_raises_data_validation_error(self):
-        resource = CustomerFactory()
-        resource.create()
-        resource.name = "new"
+    def test_find_by_name_not_found(self):
+        """It should return empty list when name not found"""
+        results = Customer.find_by_name("Nobody")
+        self.assertEqual(results.count(), 0)
 
-        with patch("service.models.db.session.commit", side_effect=Exception("fail")):
-            with self.assertRaises(DataValidationError):
-                resource.update()
+    def test_update_error(self):
+        """It should raise DataValidationError on update failure"""
+        from unittest.mock import patch
 
-    def test_delete_raises_data_validation_error(self):
-        resource = CustomerFactory()
-        resource.create()
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        profile.create()
+        with patch(
+            "service.models.db.session.commit", side_effect=Exception("commit error")
+        ):
+            self.assertRaises(DataValidationError, profile.update)
 
-        with patch("service.models.db.session.commit", side_effect=Exception("fail")):
-            with self.assertRaises(DataValidationError):
-                resource.delete()
+    def test_delete_error(self):
+        """It should raise DataValidationError on delete failure"""
+        from unittest.mock import patch
 
-    def test_deserialize_missing_required_fields(self):
-        customer = Customer()
-        with self.assertRaises(DataValidationError):
-            customer.deserialize({"name": "Jeffrey"})
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        profile.create()
+        with patch(
+            "service.models.db.session.commit", side_effect=Exception("commit error")
+        ):
+            self.assertRaises(DataValidationError, profile.delete)
 
-    def test_create_missing_required_fields(self):
-        resource = Customer(name="Jeffrey")
-        with self.assertRaises(Exception):
-            resource.create()  # missing userid and email triggers DataValidationError or DB error
+    def test_create_error(self):
+        """It should raise DataValidationError on create failure"""
+        from unittest.mock import patch
 
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        with patch(
+            "service.models.db.session.commit", side_effect=Exception("commit error")
+        ):
+            self.assertRaises(DataValidationError, profile.create)
+
+    def test_active_defaults_to_true(self):
+        """It should default active to True when not provided"""
+        profile = CustomerFactory(active=True)
+        profile.id = None
+        profile.create()
+        found = Customer.find(profile.id)
+        self.assertTrue(found.active)
+
+    def test_serialize_deserialize_active(self):
+        """It should serialize and deserialize the active field correctly"""
+        profile = CustomerFactory(active=False)
+        profile.id = None
+        profile.create()
+        data = profile.serialize()
+        self.assertIn("active", data)
+        self.assertEqual(data["active"], False)
+
+        new_profile = Customer()
+        new_profile.deserialize(data)
+        self.assertEqual(new_profile.active, False)

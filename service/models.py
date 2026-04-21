@@ -30,7 +30,7 @@ class Customer(db.Model):
     userid = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(128), unique=True, nullable=False)
     address = db.Column(db.String(256), nullable=True)
-    active = db.Column(db.Boolean(), default=True)
+    active = db.Column(db.Boolean(), default=True, nullable=False)
     product_attributes = db.Column(db.String(256), nullable=True)
     assigned_csm = db.Column(db.String(128), nullable=True)
     arr_value = db.Column(db.Float(), nullable=True)
