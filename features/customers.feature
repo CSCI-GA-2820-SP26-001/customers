@@ -33,3 +33,11 @@ Feature: Customer Service REST API
     Given a customer exists with name "Carol", userid "carol01", email "carol@example.com"
     When I delete the customer by id
     Then the response status code should be 204
+
+  Scenario: Update an existing customer
+    Given a customer exists with name "Dave", userid "dave01", email "dave@example.com"
+    When I update the customer with the following data
+      | name         | userid  | email             |
+      | Dave Updated | dave01  | dave@example.com  |
+    Then the response status code should be 200
+    And the response should contain "Dave Updated"

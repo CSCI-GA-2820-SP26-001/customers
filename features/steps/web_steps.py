@@ -92,3 +92,20 @@ def step_response_contains(context, text):
 def step_response_is_list(context):
     data = context.resp.json()
     assert isinstance(data, list), f"Expected a list, got: {type(data)}"
+
+
+@when("I update the customer with the following data")
+def step_update_customer(context):
+    row = context.table[0]
+    payload = {
+        "name": row["name"],
+        "userid": row["userid"],
+        "email": row["email"],
+    }
+    customer_id = context.customer["id"]
+    context.resp = requests.put(
+        f"{context.BASE_URL}/customers/{customer_id}",
+        json=payload,
+        headers=context.headers,
+        timeout=10,
+    )
