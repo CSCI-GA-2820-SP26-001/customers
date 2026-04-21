@@ -68,14 +68,14 @@ class TestCustomerModel(TestCase):
 
     def test_create_a_customer_profile(self):
         """It should Create a customer profile"""
-        profile = CustomerProfileModel(
+        profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
             email="jane@example.com",
             address="123 Main St",
             active=True,
         )
-        self.assertEqual(str(profile), "<CustomerProfileModel Jane Doe id=[None]>")
+        self.assertEqual(str(profile), "<Customer Jane Doe id=[None]>")
         self.assertTrue(profile is not None)
         self.assertEqual(profile.id, None)
         self.assertEqual(profile.name, "Jane Doe")
@@ -85,7 +85,7 @@ class TestCustomerModel(TestCase):
         self.assertEqual(profile.active, True)
 
         # Test with optional fields omitted and active defaulting to True
-        profile2 = CustomerProfileModel(
+        profile2 = Customer(
             name="John Smith",
             userid="johnsmith456",
             email="john@example.com",
@@ -99,7 +99,7 @@ class TestCustomerModel(TestCase):
 
     def test_update_a_customer_profile(self):
         """It should Update a customer profile"""
-        profile = CustomerProfileModel(
+        profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
             email="jane@example.com",
@@ -109,12 +109,12 @@ class TestCustomerModel(TestCase):
         self.assertIsNotNone(profile.id)
         profile.name = "Jane Smith"
         profile.update()
-        updated = CustomerProfileModel.find(profile.id)
+        updated = Customer.find(profile.id)
         self.assertEqual(updated.name, "Jane Smith")
 
     def test_delete_a_customer_profile(self):
         """It should Delete a customer profile"""
-        profile = CustomerProfileModel(
+        profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
             email="jane@example.com",
@@ -123,36 +123,36 @@ class TestCustomerModel(TestCase):
         profile.create()
         self.assertIsNotNone(profile.id)
         profile.delete()
-        deleted = CustomerProfileModel.find(profile.id)
+        deleted = Customer.find(profile.id)
         self.assertIsNone(deleted)
 
     def test_list_all_customer_profiles(self):
         """It should List all customer profiles"""
-        profiles = CustomerProfileModel.all()
+        profiles = Customer.all()
         self.assertEqual(profiles, [])
         for _ in range(5):
-            profile = CustomerProfileFactory()
+            profile = CustomerFactory()
             profile.id = None
             profile.create()
-        profiles = CustomerProfileModel.all()
+        profiles = Customer.all()
         self.assertEqual(len(profiles), 5)
 
     def test_find_by_name(self):
         """It should Find a customer profile by name"""
-        profile = CustomerProfileModel(
+        profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
             email="jane@example.com",
             active=True,
         )
         profile.create()
-        results = CustomerProfileModel.find_by_name("Jane Doe")
+        results = Customer.find_by_name("Jane Doe")
         self.assertEqual(results.count(), 1)
         self.assertEqual(results[0].userid, "janedoe123")
 
     def test_deserialize_missing_name(self):
         """It should raise DataValidationError when name is missing"""
-        profile = CustomerProfileModel()
+        profile = Customer()
         self.assertRaises(
             DataValidationError,
             profile.deserialize,
@@ -161,7 +161,7 @@ class TestCustomerModel(TestCase):
 
     def test_deserialize_missing_userid(self):
         """It should raise DataValidationError when userid is missing"""
-        profile = CustomerProfileModel()
+        profile = Customer()
         self.assertRaises(
             DataValidationError,
             profile.deserialize,
@@ -170,7 +170,7 @@ class TestCustomerModel(TestCase):
 
     def test_deserialize_missing_email(self):
         """It should raise DataValidationError when email is missing"""
-        profile = CustomerProfileModel()
+        profile = Customer()
         self.assertRaises(
             DataValidationError,
             profile.deserialize,
@@ -179,7 +179,7 @@ class TestCustomerModel(TestCase):
 
     def test_deserialize_bad_data(self):
         """It should raise DataValidationError when data is not a dict"""
-        profile = CustomerProfileModel()
+        profile = Customer()
         self.assertRaises(
             DataValidationError,
             profile.deserialize,
@@ -188,14 +188,14 @@ class TestCustomerModel(TestCase):
 
     def test_find_by_name_not_found(self):
         """It should return empty list when name not found"""
-        results = CustomerProfileModel.find_by_name("Nobody")
+        results = Customer.find_by_name("Nobody")
         self.assertEqual(results.count(), 0)
 
     def test_update_error(self):
         """It should raise DataValidationError on update failure"""
         from unittest.mock import patch
 
-        profile = CustomerProfileModel(
+        profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
             email="jane@example.com",
@@ -211,7 +211,7 @@ class TestCustomerModel(TestCase):
         """It should raise DataValidationError on delete failure"""
         from unittest.mock import patch
 
-        profile = CustomerProfileModel(
+        profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
             email="jane@example.com",
@@ -227,7 +227,7 @@ class TestCustomerModel(TestCase):
         """It should raise DataValidationError on create failure"""
         from unittest.mock import patch
 
-        profile = CustomerProfileModel(
+        profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
             email="jane@example.com",
@@ -240,21 +240,21 @@ class TestCustomerModel(TestCase):
 
     def test_active_defaults_to_true(self):
         """It should default active to True when not provided"""
-        profile = CustomerProfileFactory(active=True)
+        profile = CustomerFactory(active=True)
         profile.id = None
         profile.create()
-        found = CustomerProfileModel.find(profile.id)
+        found = Customer.find(profile.id)
         self.assertTrue(found.active)
 
     def test_serialize_deserialize_active(self):
         """It should serialize and deserialize the active field correctly"""
-        profile = CustomerProfileFactory(active=False)
+        profile = CustomerFactory(active=False)
         profile.id = None
         profile.create()
         data = profile.serialize()
         self.assertIn("active", data)
         self.assertEqual(data["active"], False)
 
-        new_profile = CustomerProfileModel()
+        new_profile = Customer()
         new_profile.deserialize(data)
         self.assertEqual(new_profile.active, False)
