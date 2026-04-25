@@ -109,3 +109,20 @@ def step_update_customer(context):
         headers=context.headers,
         timeout=10,
     )
+
+
+@when('I query customers by name "{name}"')
+def step_query_customers_by_name(context, name):
+    context.resp = requests.get(
+        f"{context.BASE_URL}/customers?name={name}", timeout=10
+    )
+
+
+@when("I activate the customer by id")
+def step_activate_customer(context):
+    customer_id = context.customer["id"]
+    context.resp = requests.put(
+        f"{context.BASE_URL}/customers/{customer_id}/activate",
+        headers=context.headers,
+        timeout=10,
+    )

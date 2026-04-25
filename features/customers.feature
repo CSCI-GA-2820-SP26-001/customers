@@ -41,3 +41,16 @@ Feature: Customer Service REST API
       | Dave Updated | dave01  | dave@example.com  |
     Then the response status code should be 200
     And the response should contain "Dave Updated"
+
+  Scenario: Query customers by name
+    Given a customer exists with name "Eve", userid "eve01", email "eve@example.com"
+    When I query customers by name "Eve"
+    Then the response status code should be 200
+    And the response should be a list
+    And the response should contain "Eve"
+
+  Scenario: Activate a customer
+    Given a customer exists with name "Frank", userid "frank01", email "frank@example.com"
+    When I activate the customer by id
+    Then the response status code should be 200
+    And the response should contain "true"
