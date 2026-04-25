@@ -1,0 +1,60 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ci-pipeline
+spec:
+  description: |
+    Clone the repository, then run lint and test tasks in parallel.
+  params:
+    - name: repo-url
+      type: string
+      description: URL of the git repository to clone.
+    - name: revision
+      type: string
+      description: Git revision (branch, tag, or sha) to check out.
+      default: master
+  workspaces:
+    - name: source
+      description: Shared workspace where source code lives between tasks.
+  tasks:
+    - name: clone
+      taskRef:
+        resolver: hub
+        params:
+          - name: catalog
+            value: tekton-catalog-tasks
+          - name: type
+            value: artifact
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: version
+            value: "0.9"
+      workspaces:
+        - name: output
+          workspace: source
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+
+    - name: lint
+      runAfter:
+        - clone
+      taskRef:
+        name: lint
+      workspaces:
+        - name: source
+          workspace: source
+
+    - name: tests
+      runAfter:
+        - clone
+      taskRef:
+        name: tests
+      workspaces:
+        - name: source
+          workspace: source
