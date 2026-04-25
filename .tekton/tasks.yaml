@@ -45,3 +45,27 @@ spec:
         pipenv install --system --dev
         echo "Running tests..."
         make test
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy
+spec:
+  description: Apply Kubernetes manifests from the k8s/ folder to the cluster.
+  workspaces:
+    - name: source
+      description: Workspace containing the cloned source code.
+  params:
+    - name: image
+      type: string
+      description: Image reference to deploy.
+  steps:
+    - name: apply-manifests
+      image: quay.io/openshift/origin-cli:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        echo "Deploying image $(params.image) to cluster..."
+        oc apply -R -f k8s/
+        echo "Deployment manifests applied."

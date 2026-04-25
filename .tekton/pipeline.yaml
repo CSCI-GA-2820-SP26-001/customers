@@ -5,7 +5,8 @@ metadata:
   name: ci-pipeline
 spec:
   description: |
-    Clone the repository, then run lint and test tasks in parallel.
+    Clone the repository, run lint and tests in parallel, build the
+    container image, and deploy to the cluster.
   params:
     - name: repo-url
       type: string
@@ -14,6 +15,10 @@ spec:
       type: string
       description: Git revision (branch, tag, or sha) to check out.
       default: master
+    - name: image
+      type: string
+      description: Image reference to build and push (e.g. cluster-registry:5000/customers:1.0).
+      default: cluster-registry:5000/customers:1.0
   workspaces:
     - name: source
       description: Shared workspace where source code lives between tasks.
@@ -58,3 +63,41 @@ spec:
       workspaces:
         - name: source
           workspace: source
+
+    - name: build-image
+      runAfter:
+        - lint
+        - tests
+      taskRef:
+        resolver: hub
+        params:
+          - name: catalog
+            value: tekton-catalog-tasks
+          - name: type
+            value: artifact
+          - name: kind
+            value: task
+          - name: name
+            value: buildah
+          - name: version
+            value: "0.7"
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: IMAGE
+          value: $(params.image)
+        - name: TLSVERIFY
+          value: "false"
+
+    - name: deploy
+      runAfter:
+        - build-image
+      taskRef:
+        name: deploy
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: image
+          value: $(params.image)
