@@ -69,3 +69,59 @@ spec:
         echo "Deploying image $(params.image) to cluster..."
         oc apply -R -f k8s/
         echo "Deployment manifests applied."
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bdd
+spec:
+  description: Run Behave BDD tests against the deployed service.
+  workspaces:
+    - name: source
+      description: Workspace containing the cloned source code.
+  params:
+    - name: base-url
+      type: string
+      description: Base URL of the deployed service (e.g. http://customers).
+  steps:
+    - name: run-bdd
+      image: python:3.12-slim
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: BASE_URL
+          value: $(params.base-url)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        echo "Installing dependencies..."
+        pip install --upgrade pip pipenv
+        pipenv install --system --dev
+
+        echo "Waiting for service to be ready at ${BASE_URL}..."
+        python - <<'PY'
+        import os
+        import time
+        import sys
+        import requests
+
+        base_url = os.environ["BASE_URL"].rstrip("/")
+        url = f"{base_url}/health"
+        deadline = time.time() + 180
+
+        while time.time() < deadline:
+            try:
+                r = requests.get(url, timeout=5)
+                if r.status_code == 200:
+                    print(f"Service healthy: {url}")
+                    sys.exit(0)
+                print(f"Not ready ({r.status_code}): {url}")
+            except Exception as e:  # noqa: BLE001
+                print(f"Not ready: {e}")
+            time.sleep(5)
+
+        raise SystemExit(f"Timed out waiting for {url}")
+        PY
+
+        echo "Running BDD tests with BASE_URL=${BASE_URL}..."
+        make bdd
