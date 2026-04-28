@@ -19,6 +19,10 @@ spec:
       type: string
       description: Image reference to build and push (e.g. cluster-registry:5000/customers:1.0).
       default: cluster-registry:5000/customers:1.0
+    - name: base-url
+      type: string
+      description: Base URL where the deployed service is reachable from within the cluster.
+      default: http://customers
   workspaces:
     - name: source
       description: Shared workspace where source code lives between tasks.
@@ -101,3 +105,15 @@ spec:
       params:
         - name: image
           value: $(params.image)
+
+    - name: bdd
+      runAfter:
+        - deploy
+      taskRef:
+        name: bdd
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: base-url
+          value: $(params.base-url)
