@@ -42,7 +42,7 @@ spec:
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
-  name: ci-pipeline-template
+  name: cd-pipeline-template
 spec:
   params:
     - name: repo-url
@@ -53,10 +53,10 @@ spec:
     - apiVersion: tekton.dev/v1
       kind: PipelineRun
       metadata:
-        generateName: ci-pipeline-run-
+        generateName: cd-pipeline-run-
       spec:
         pipelineRef:
-          name: ci-pipeline
+          name: cd-pipeline
         params:
           - name: repo-url
             value: $(tt.params.repo-url)
@@ -93,4 +93,4 @@ spec:
       bindings:
         - ref: github-push-binding
       template:
-        ref: ci-pipeline-template
+        ref: cd-pipeline-template
