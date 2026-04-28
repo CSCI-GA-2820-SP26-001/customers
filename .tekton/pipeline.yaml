@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: ci-pipeline
+  name: cd-pipeline
 spec:
   description: |
     Clone the repository, run lint and tests in parallel, build the
