@@ -23,7 +23,7 @@ and Delete Customer
 
 from flask import jsonify, request, url_for, abort
 from flask import current_app as app  # Import Flask application
-from service.models import Customer
+from service.models import Customer, DataValidationError
 from service.common import status  # HTTP Status Codes
 
 
@@ -96,12 +96,11 @@ def create_customer():
             jsonify(customer.serialize()),
             status.HTTP_201_CREATED,
             {
-                "Location": url_for(
-                    "get_customer", customer_id=customer.id, _external=True
-                )
+                # Relative URL avoids BuildError when SERVER_NAME / proxy URL is unset (e.g. local honcho).
+                "Location": url_for("get_customer", customer_id=customer.id),
             },
         )
-    except Exception as e:
+    except DataValidationError as e:
         app.logger.error("Error creating customer: %s", str(e))
         abort(status.HTTP_400_BAD_REQUEST, description=str(e))
 
@@ -144,7 +143,7 @@ def update_customer(customer_id):
         customer.update()
         app.logger.info("Updated customer with id: %s", customer_id)
         return jsonify(customer.serialize()), status.HTTP_200_OK
-    except Exception as e:
+    except DataValidationError as e:
         app.logger.error("Error updating customer: %s", str(e))
         abort(status.HTTP_400_BAD_REQUEST, description=str(e))
 

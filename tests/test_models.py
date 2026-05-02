@@ -193,8 +193,6 @@ class TestCustomerModel(TestCase):
 
     def test_update_error(self):
         """It should raise DataValidationError on update failure"""
-        from unittest.mock import patch
-
         profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
@@ -209,8 +207,6 @@ class TestCustomerModel(TestCase):
 
     def test_delete_error(self):
         """It should raise DataValidationError on delete failure"""
-        from unittest.mock import patch
-
         profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
@@ -225,8 +221,6 @@ class TestCustomerModel(TestCase):
 
     def test_create_error(self):
         """It should raise DataValidationError on create failure"""
-        from unittest.mock import patch
-
         profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
