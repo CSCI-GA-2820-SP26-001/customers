@@ -353,3 +353,15 @@ class TestFriendlyIntegrityMessage(TestCase):
         msg = _friendly_integrity_message(err)
         self.assertIsInstance(msg, str)
         self.assertTrue(len(msg) > 0)
+
+    def test_email_violation_not_masked_by_sql_echo(self):
+        """Email duplicate must not be classified as userid when SQL lists userid."""
+        orig = Exception("Key (email)=(same@example.com) already exists.")
+        err = IntegrityError(
+            "INSERT INTO customer (name, userid, email) VALUES (%s,%s,%s)",
+            {},
+            orig,
+        )
+        msg = _friendly_integrity_message(err)
+        self.assertIn("email", msg.lower())
+        self.assertNotIn("user id already", msg.lower())
