@@ -22,7 +22,7 @@ REST API for **Customer** records (Flask + SQLAlchemy + PostgreSQL). All respons
 | **POST** | `/customers` | Create a customer (`201` + `Location` header) |
 | **GET** | `/customers/<id>` | Read one customer (`200` or `404`) |
 | **PUT** | `/customers/<id>` | Replace a customer (`200` or `404`; body same shape as create) |
-| **DELETE** | `/customers/<id>` | Delete (`204` empty body) |
+| **DELETE** | `/customers/<id>` | Delete (`204` empty body, or `404` if id does not exist) |
 | **GET** | `/error` | Test-only route that triggers `500` (for error-handler tests) |
 
 ### Request headers

@@ -5,7 +5,10 @@ All of the models are stored in this module
 """
 
 import logging
+import re
+
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger("flask.app")
 
@@ -15,6 +18,29 @@ db = SQLAlchemy()
 
 class DataValidationError(Exception):
     """Used for an data validation errors when deserializing"""
+
+
+def _friendly_integrity_message(exc: IntegrityError) -> str:
+    """Turn a DB unique/constraint error into a short API message."""
+    raw = " ".join(
+        part
+        for part in (
+            str(exc.orig) if getattr(exc, "orig", None) else "",
+            str(exc),
+        )
+        if part
+    ).lower()
+    if re.search(r"\b(userid|user_id|ix_customer_userid)\b", raw) or (
+        "userid" in raw and "unique" in raw
+    ):
+        return "A customer with this user id already exists."
+    if re.search(r"\b(email|ix_customer_email)\b", raw) or (
+        "email" in raw and ("unique" in raw or "duplicate" in raw)
+    ):
+        return "A customer with this email already exists."
+    if "unique" in raw or "duplicate key" in raw:
+        return "A customer with this user id or email already exists."
+    return "Could not save the customer (database constraint)."
 
 
 class Customer(db.Model):  # pylint: disable=too-many-instance-attributes
@@ -47,10 +73,18 @@ class Customer(db.Model):  # pylint: disable=too-many-instance-attributes
         try:
             db.session.add(self)
             db.session.commit()
+            db.session.refresh(self)
+        except IntegrityError as err:
+            db.session.rollback()
+            logger.error("Integrity error creating record: %s", self)
+            raise DataValidationError(_friendly_integrity_message(err)) from err
         except Exception as e:
             db.session.rollback()
-            logger.error("Error creating record: %s", self)
-            raise DataValidationError(e) from e
+            logger.error("Error creating record: %s", self, exc_info=True)
+            msg = str(e)
+            if len(msg) > 200:
+                msg = "Could not create the customer. See server logs for details."
+            raise DataValidationError(msg) from e
 
     def update(self):
         """
@@ -59,10 +93,17 @@ class Customer(db.Model):  # pylint: disable=too-many-instance-attributes
         logger.info("Saving %s", self.name)
         try:
             db.session.commit()
+        except IntegrityError as err:
+            db.session.rollback()
+            logger.error("Integrity error updating record: %s", self)
+            raise DataValidationError(_friendly_integrity_message(err)) from err
         except Exception as e:
             db.session.rollback()
-            logger.error("Error updating record: %s", self)
-            raise DataValidationError(e) from e
+            logger.error("Error updating record: %s", self, exc_info=True)
+            msg = str(e)
+            if len(msg) > 200:
+                msg = "Could not update the customer. See server logs for details."
+            raise DataValidationError(msg) from e
 
     def delete(self):
         """Removes a Customer from the data store"""

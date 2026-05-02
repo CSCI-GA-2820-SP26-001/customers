@@ -92,8 +92,10 @@ class TestCustomerService(TestCase):
         self.assertIn("text/html", resp.content_type)
         html = resp.data.decode()
         self.assertIn("Customers Admin", html)
-        self.assertIn('id="btn-create"', html)
+        self.assertIn('id="btn-execute"', html)
+        self.assertIn('id="admin-operation"', html)
         self.assertIn('id="admin-page"', html)
+        self.assertIn('id="admin-customers-table"', html)
 
     def test_create_customer(self):
         """It should Create a new Customer"""
@@ -155,6 +157,11 @@ class TestCustomerService(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
 
         self.assertIsNone(Customer.find(customer.id))
+
+    def test_delete_customer_not_found(self):
+        """It should return 404 when deleting a Customer that does not exist"""
+        resp = self.client.delete("/customers/99999")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_update_customer_not_found(self):
         """It should return 404 when updating a Customer that does not exist"""
