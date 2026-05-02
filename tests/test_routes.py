@@ -85,6 +85,16 @@ class TestCustomerService(TestCase):
         data = resp.get_json()
         self.assertEqual(data, {"status": "OK"})
 
+    def test_admin_ui_page(self):
+        """It should serve the HTML admin console for managers"""
+        resp = self.client.get("/admin")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("text/html", resp.content_type)
+        html = resp.data.decode()
+        self.assertIn("Customers Admin", html)
+        self.assertIn('id="btn-create"', html)
+        self.assertIn('id="admin-page"', html)
+
     def test_create_customer(self):
         """It should Create a new Customer"""
         payload = {

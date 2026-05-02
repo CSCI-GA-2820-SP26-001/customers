@@ -17,6 +17,7 @@ REST API for **Customer** records (Flask + SQLAlchemy + PostgreSQL). All respons
 | Method | Path | Description |
 |--------|------|-------------|
 | **GET** | `/` | Service metadata JSON (`name`, `version`, `customers_url`) |
+| **GET** | `/admin` | Browser admin UI for internal staff (HTML; drives the JSON API) |
 | **GET** | `/customers` | List all customers (JSON array; `200`; empty DB → `[]`) |
 | **POST** | `/customers` | Create a customer (`201` + `Location` header) |
 | **GET** | `/customers/<id>` | Read one customer (`200` or `404`) |
