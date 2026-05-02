@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Customers Admin</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #1a1a1a; }
+    body { margin: 0; background: #f4f4f5; }
+    header { background: #27272a; color: #fafafa; padding: 1rem 1.5rem; }
+    h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+    main { max-width: 52rem; margin: 1.5rem auto; padding: 0 1rem; }
+    section { background: #fff; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h2 { margin: 0 0 1rem; font-size: 1rem; color: #52525b; }
+    label { display: block; font-size: .8rem; color: #71717a; margin-bottom: .2rem; }
+    input { width: 100%; max-width: 28rem; padding: .45rem .6rem; margin-bottom: .75rem;
+      border: 1px solid #d4d4d8; border-radius: 6px; box-sizing: border-box; }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0 0; }
+    button { padding: .5rem .85rem; border: none; border-radius: 6px; cursor: pointer;
+      font-size: .875rem; background: #3f3f46; color: #fff; }
+    button:hover { background: #52525b; }
+    button.secondary { background: #e4e4e7; color: #27272a; }
+    button.secondary:hover { background: #d4d4d8; }
+    #admin-status { min-height: 1.25rem; font-size: .875rem; margin: .5rem 0; }
+    #admin-status.ok { color: #15803d; }
+    #admin-status.err { color: #b91c1c; }
+    pre#admin-result { background: #18181b; color: #e4e4e7; padding: 1rem; border-radius: 6px;
+      overflow: auto; max-height: 22rem; font-size: .8rem; margin: 0; }
+  </style>
+</head>
+<body id="admin-page">
+  <header>
+    <h1>Customers Admin</h1>
+    <p style="margin:.35rem 0 0;font-size:.85rem;opacity:.85">Internal console — uses the REST API in this browser session.</p>
+  </header>
+  <main>
+    <section aria-labelledby="fields-heading">
+      <h2 id="fields-heading">Customer fields</h2>
+      <label for="customer-id">Customer ID</label>
+      <input id="customer-id" name="customer-id" type="text" inputmode="numeric" placeholder="e.g. 1" autocomplete="off" />
+      <label for="customer-name">Name</label>
+      <input id="customer-name" name="customer-name" type="text" autocomplete="off" />
+      <label for="customer-userid">User ID</label>
+      <input id="customer-userid" name="customer-userid" type="text" autocomplete="off" />
+      <label for="customer-email">Email</label>
+      <input id="customer-email" name="customer-email" type="email" autocomplete="off" />
+      <label for="customer-address">Address</label>
+      <input id="customer-address" name="customer-address" type="text" autocomplete="off" />
+      <label for="query-name">Query by name (list filter)</label>
+      <input id="query-name" name="query-name" type="text" placeholder="Exact name, case-insensitive" autocomplete="off" />
+      <div class="row">
+        <button type="button" id="btn-create">Create</button>
+        <button type="button" id="btn-read" class="secondary">Retrieve</button>
+        <button type="button" id="btn-update" class="secondary">Update</button>
+        <button type="button" id="btn-delete" class="secondary">Delete</button>
+        <button type="button" id="btn-list" class="secondary">List all</button>
+        <button type="button" id="btn-query" class="secondary">Query by name</button>
+        <button type="button" id="btn-activate" class="secondary">Activate</button>
+      </div>
+    </section>
+    <section>
+      <div id="admin-status" role="status" aria-live="polite"></div>
+      <pre id="admin-result">{}</pre>
+    </section>
+  </main>
+  <script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("admin-status");
+  const resultEl = $("admin-result");
+
+  function setStatus(msg, ok) {
+    statusEl.textContent = msg || "";
+    statusEl.className = ok === true ? "ok" : ok === false ? "err" : "";
+  }
+
+  function showResult(data) {
+    resultEl.textContent =
+      typeof data === "string" ? data : JSON.stringify(data, null, 2);
+  }
+
+  function jsonHeaders() {
+    return { "Content-Type": "application/json", Accept: "application/json" };
+  }
+
+  function readForm() {
+    return {
+      id: $("customer-id").value.trim(),
+      name: $("customer-name").value.trim(),
+      userid: $("customer-userid").value.trim(),
+      email: $("customer-email").value.trim(),
+      address: $("customer-address").value.trim() || null,
+    };
+  }
+
+  function fillForm(c) {
+    if (!c) return;
+    $("customer-id").value = c.id != null ? String(c.id) : "";
+    $("customer-name").value = c.name || "";
+    $("customer-userid").value = c.userid || "";
+    $("customer-email").value = c.email || "";
+    $("customer-address").value = c.address || "";
+  }
+
+  $("btn-create").addEventListener("click", async () => {
+    const f = readForm();
+    if (!f.name || !f.userid || !f.email) {
+      setStatus("Name, User ID, and Email are required to create.", false);
+      return;
+    }
+    setStatus("Creating…", null);
+    try {
+      const r = await fetch("/customers", {
+        method: "POST",
+        headers: jsonHeaders(),
+        body: JSON.stringify({
+          name: f.name,
+          userid: f.userid,
+          email: f.email,
+          address: f.address || undefined,
+        }),
+      });
+      const text = await r.text();
+      let body;
+      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+      showResult(body);
+      setStatus(r.ok ? "Created." : "Create failed (" + r.status + ").", r.ok);
+      if (r.ok && body && body.id) fillForm(body);
+    } catch (e) {
+      setStatus(String(e), false);
+    }
+  });
+
+  $("btn-read").addEventListener("click", async () => {
+    const id = readForm().id;
+    if (!id) { setStatus("Enter a Customer ID.", false); return; }
+    setStatus("Loading…", null);
+    try {
+      const r = await fetch("/customers/" + encodeURIComponent(id), { headers: { Accept: "application/json" } });
+      const text = await r.text();
+      let body;
+      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+      showResult(body);
+      setStatus(r.ok ? "Loaded." : "Retrieve failed (" + r.status + ").", r.ok);
+      if (r.ok && body) fillForm(body);
+    } catch (e) {
+      setStatus(String(e), false);
+    }
+  });
+
+  $("btn-update").addEventListener("click", async () => {
+    const f = readForm();
+    if (!f.id) { setStatus("Enter a Customer ID to update.", false); return; }
+    if (!f.name || !f.userid || !f.email) {
+      setStatus("Name, User ID, and Email are required for update.", false);
+      return;
+    }
+    setStatus("Updating…", null);
+    try {
+      const r = await fetch("/customers/" + encodeURIComponent(f.id), {
+        method: "PUT",
+        headers: jsonHeaders(),
+        body: JSON.stringify({
+          name: f.name,
+          userid: f.userid,
+          email: f.email,
+          address: f.address || undefined,
+        }),
+      });
+      const text = await r.text();
+      let body;
+      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+      showResult(body);
+      setStatus(r.ok ? "Updated." : "Update failed (" + r.status + ").", r.ok);
+      if (r.ok && body) fillForm(body);
+    } catch (e) {
+      setStatus(String(e), false);
+    }
+  });
+
+  $("btn-delete").addEventListener("click", async () => {
+    const id = readForm().id;
+    if (!id) { setStatus("Enter a Customer ID to delete.", false); return; }
+    setStatus("Deleting…", null);
+    try {
+      const r = await fetch("/customers/" + encodeURIComponent(id), { method: "DELETE" });
+      showResult(r.status === 204 ? { deleted: true, id: Number(id) } : await r.text());
+      setStatus(r.ok ? "Deleted." : "Delete failed (" + r.status + ").", r.ok);
+      if (r.ok) {
+        $("customer-id").value = "";
+      }
+    } catch (e) {
+      setStatus(String(e), false);
+    }
+  });
+
+  $("btn-list").addEventListener("click", async () => {
+    setStatus("Loading list…", null);
+    try {
+      const r = await fetch("/customers", { headers: { Accept: "application/json" } });
+      const body = await r.json();
+      showResult(body);
+      setStatus(r.ok ? "List loaded (" + (Array.isArray(body) ? body.length : 0) + " rows)." : "List failed.", r.ok);
+    } catch (e) {
+      setStatus(String(e), false);
+    }
+  });
+
+  $("btn-query").addEventListener("click", async () => {
+    const q = $("query-name").value.trim();
+    if (!q) { setStatus("Enter a name to filter.", false); return; }
+    setStatus("Querying…", null);
+    try {
+      const r = await fetch("/customers?name=" + encodeURIComponent(q), {
+        headers: { Accept: "application/json" },
+      });
+      const body = await r.json();
+      showResult(body);
+      setStatus(r.ok ? "Query complete." : "Query failed.", r.ok);
+    } catch (e) {
+      setStatus(String(e), false);
+    }
+  });
+
+  $("btn-activate").addEventListener("click", async () => {
+    const id = readForm().id;
+    if (!id) { setStatus("Enter a Customer ID to activate.", false); return; }
+    setStatus("Activating…", null);
+    try {
+      const r = await fetch("/customers/" + encodeURIComponent(id) + "/activate", {
+        method: "PUT",
+        headers: { Accept: "application/json" },
+      });
+      const text = await r.text();
+      let body;
+      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+      showResult(body);
+      setStatus(r.ok ? "Activated." : "Activate failed (" + r.status + ").", r.ok);
+      if (r.ok && body) fillForm(body);
+    } catch (e) {
+      setStatus(String(e), false);
+    }
+  });
+})();
+  </script>
+</body>
+</html>
