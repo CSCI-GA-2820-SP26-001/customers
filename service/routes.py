@@ -21,9 +21,9 @@ This service implements a REST API that allows you to Create, Read, Update
 and Delete Customer
 """
 
-from flask import jsonify, request, url_for, abort
+from flask import jsonify, request, abort
 from flask import current_app as app  # Import Flask application
-from service.models import Customer
+from service.models import Customer, DataValidationError
 from service.common import status  # HTTP Status Codes
 
 
@@ -92,16 +92,13 @@ def create_customer():
         customer.deserialize(data)
         customer.create()
         app.logger.info("Created customer with id: %s", customer.id)
+        loc = f"/customers/{customer.id}"
         return (
             jsonify(customer.serialize()),
             status.HTTP_201_CREATED,
-            {
-                "Location": url_for(
-                    "get_customer", customer_id=customer.id, _external=True
-                )
-            },
+            {"Location": loc},
         )
-    except Exception as e:
+    except DataValidationError as e:
         app.logger.error("Error creating customer: %s", str(e))
         abort(status.HTTP_400_BAD_REQUEST, description=str(e))
 
@@ -144,7 +141,7 @@ def update_customer(customer_id):
         customer.update()
         app.logger.info("Updated customer with id: %s", customer_id)
         return jsonify(customer.serialize()), status.HTTP_200_OK
-    except Exception as e:
+    except DataValidationError as e:
         app.logger.error("Error updating customer: %s", str(e))
         abort(status.HTTP_400_BAD_REQUEST, description=str(e))
 
@@ -157,10 +154,12 @@ def delete_customer(customer_id):
     """Delete a Customer"""
     app.logger.info("Request to delete customer with id: %s", customer_id)
     customer = Customer.find(customer_id)
-    if customer:
-        customer.delete()
-        app.logger.info("Deleted customer with id: %s", customer_id)
+    if not customer:
+        app.logger.warning("Customer with id: %s not found", customer_id)
+        abort(status.HTTP_404_NOT_FOUND, description="Customer not found")
 
+    customer.delete()
+    app.logger.info("Deleted customer with id: %s", customer_id)
     return "", status.HTTP_204_NO_CONTENT
 
 

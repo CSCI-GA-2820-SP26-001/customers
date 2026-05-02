@@ -92,8 +92,10 @@ class TestCustomerService(TestCase):
         self.assertIn("text/html", resp.content_type)
         html = resp.data.decode()
         self.assertIn("Customers Admin", html)
-        self.assertIn('id="btn-create"', html)
+        self.assertIn('id="btn-execute"', html)
+        self.assertIn('id="admin-operation"', html)
         self.assertIn('id="admin-page"', html)
+        self.assertIn('id="admin-customers-table"', html)
 
     def test_create_customer(self):
         """It should Create a new Customer"""
@@ -156,6 +158,11 @@ class TestCustomerService(TestCase):
 
         self.assertIsNone(Customer.find(customer.id))
 
+    def test_delete_customer_not_found(self):
+        """It should return 404 when deleting a Customer that does not exist"""
+        resp = self.client.delete("/customers/99999")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_update_customer_not_found(self):
         """It should return 404 when updating a Customer that does not exist"""
         resp = self.client.put(
@@ -183,6 +190,55 @@ class TestCustomerService(TestCase):
         """It should return 400 when required fields are missing"""
         resp = self.client.post("/customers", json={"name": "NoUser"})
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_customer_duplicate_userid(self):
+        """It should return 400 when userid already exists"""
+        CustomerFactory(userid="dupuser", email="first@example.com").create()
+        resp = self.client.post(
+            "/customers",
+            json={
+                "name": "Other",
+                "userid": "dupuser",
+                "email": "second@example.com",
+            },
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        data = resp.get_json()
+        self.assertIn("message", data)
+        self.assertIn("user id", data["message"].lower())
+
+    def test_create_customer_duplicate_email(self):
+        """It should return 400 when email already exists"""
+        CustomerFactory(userid="u1", email="same@example.com").create()
+        resp = self.client.post(
+            "/customers",
+            json={
+                "name": "Other",
+                "userid": "u2",
+                "email": "same@example.com",
+            },
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        data = resp.get_json()
+        self.assertIn("email", data["message"].lower())
+
+    def test_update_customer_duplicate_email(self):
+        """It should return 400 when update collides with another customer's email"""
+        a = CustomerFactory(userid="a1", email="a@example.com")
+        b = CustomerFactory(userid="b1", email="b@example.com")
+        a.create()
+        b.create()
+        resp = self.client.put(
+            f"/customers/{b.id}",
+            json={
+                "name": b.name,
+                "userid": b.userid,
+                "email": "a@example.com",
+            },
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        data = resp.get_json()
+        self.assertIn("email", data["message"].lower())
 
     def test_method_not_allowed(self):
         """It should return 405 when using wrong HTTP method"""

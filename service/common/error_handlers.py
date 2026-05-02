@@ -22,6 +22,14 @@ from service.models import DataValidationError
 from . import status
 
 
+def _api_error_message(error):
+    """Prefer a short Werkzeug description (from abort(..., description=...)) for JSON."""
+    desc = getattr(error, "description", None)
+    if isinstance(desc, str) and desc.strip():
+        return desc.strip()
+    return str(error)
+
+
 ######################################################################
 # Error Handlers
 ######################################################################
@@ -34,7 +42,11 @@ def request_validation_error(error):
 @app.errorhandler(status.HTTP_400_BAD_REQUEST)
 def bad_request(error):
     """Handles bad requests with 400_BAD_REQUEST"""
-    message = str(error)
+    message = (
+        str(error)
+        if isinstance(error, DataValidationError)
+        else _api_error_message(error)
+    )
     app.logger.warning(message)
     return (
         jsonify(
@@ -47,7 +59,7 @@ def bad_request(error):
 @app.errorhandler(status.HTTP_404_NOT_FOUND)
 def not_found(error):
     """Handles resources not found with 404_NOT_FOUND"""
-    message = str(error)
+    message = _api_error_message(error)
     app.logger.warning(message)
     return (
         jsonify(status=status.HTTP_404_NOT_FOUND, error="Not Found", message=message),

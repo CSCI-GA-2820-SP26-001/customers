@@ -5,61 +5,384 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Customers Admin</title>
   <style>
-    :root { font-family: system-ui, sans-serif; color: #1a1a1a; }
-    body { margin: 0; background: #f4f4f5; }
-    header { background: #27272a; color: #fafafa; padding: 1rem 1.5rem; }
-    h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-    main { max-width: 52rem; margin: 1.5rem auto; padding: 0 1rem; }
-    section { background: #fff; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    h2 { margin: 0 0 1rem; font-size: 1rem; color: #52525b; }
-    label { display: block; font-size: .8rem; color: #71717a; margin-bottom: .2rem; }
-    input { width: 100%; max-width: 28rem; padding: .45rem .6rem; margin-bottom: .75rem;
-      border: 1px solid #d4d4d8; border-radius: 6px; box-sizing: border-box; }
-    .row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0 0; }
-    button { padding: .5rem .85rem; border: none; border-radius: 6px; cursor: pointer;
-      font-size: .875rem; background: #3f3f46; color: #fff; }
-    button:hover { background: #52525b; }
-    button.secondary { background: #e4e4e7; color: #27272a; }
-    button.secondary:hover { background: #d4d4d8; }
-    #admin-status { min-height: 1.25rem; font-size: .875rem; margin: .5rem 0; }
-    #admin-status.ok { color: #15803d; }
+    :root {
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      color: #18181b;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --muted: #64748b;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+      color: #f8fafc;
+      padding: 1.35rem 1.75rem;
+      box-shadow: 0 4px 20px rgba(30, 27, 75, 0.35);
+    }
+    header h1 { margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { margin: 0.4rem 0 0; font-size: 0.875rem; opacity: 0.88; line-height: 1.45; max-width: 36rem; }
+    main { max-width: 56rem; margin: 1.75rem auto; padding: 0 1.25rem 2.5rem; }
+    section.panel {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.5rem 1.35rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    section.panel h2 {
+      margin: 0 0 1.1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .field { margin-bottom: 1rem; max-width: 100%; }
+    .field:last-of-type { margin-bottom: 0.25rem; }
+    label.field-label {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.5rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 0.35rem;
+    }
+    .optional {
+      font-weight: 500;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+    input[type="text"],
+    input[type="email"],
+    select {
+      width: 100%;
+      max-width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      background: #fafafa;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2rem;
+    }
+    .endpoint-hint {
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 0.8125rem;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      margin: 0 0 1.15rem;
+      color: #475569;
+      border: 1px solid var(--border);
+    }
+    .endpoint-hint .verb {
+      font-weight: 700;
+      color: var(--accent);
+      margin-right: 0.5rem;
+    }
+    fieldset {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: 0 0 1.1rem;
+      padding: 1rem 1.1rem 0.5rem;
+      background: #fafafa;
+    }
+    fieldset legend {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 0 0.4rem;
+      letter-spacing: 0.03em;
+    }
+    .id-field-hint {
+      font-size: 0.78rem;
+      color: #475569;
+      line-height: 1.45;
+      margin: 0 0 0.85rem;
+      padding: 0.55rem 0.65rem;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+    }
+    .id-field-hint code {
+      font-size: 0.85em;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+    }
+    .subheading {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 1rem 0 0.65rem;
+    }
+    .subheading:first-child { margin-top: 0; }
+    .checkbox-field {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      margin: 0.5rem 0 1rem;
+      padding: 0.85rem 1rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-width: 100%;
+    }
+    .checkbox-field input[type="checkbox"] {
+      width: 1.125rem;
+      height: 1.125rem;
+      min-width: 1.125rem;
+      margin: 0.2rem 0 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .checkbox-field .checkbox-copy {
+      flex: 1;
+      min-width: 0;
+    }
+    .checkbox-field label {
+      display: block;
+      margin: 0;
+      cursor: pointer;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #334155;
+      line-height: 1.35;
+    }
+    .checkbox-field .checkbox-hint {
+      display: block;
+      font-weight: 400;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    .list-hint {
+      font-size: 0.9rem;
+      color: #475569;
+      margin: 0 0 1rem;
+      padding: 0.75rem 1rem;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.15rem 0 0; }
+    #btn-execute {
+      padding: 0.65rem 1.35rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+      transition: background 0.15s, transform 0.1s;
+    }
+    #btn-execute:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    #btn-execute:active { transform: translateY(0); }
+    #admin-status { min-height: 1.35rem; font-size: 0.875rem; margin: 0 0 0.65rem; font-weight: 500; }
+    #admin-status.ok { color: #047857; }
     #admin-status.err { color: #b91c1c; }
-    pre#admin-result { background: #18181b; color: #e4e4e7; padding: 1rem; border-radius: 6px;
-      overflow: auto; max-height: 22rem; font-size: .8rem; margin: 0; }
+    pre#admin-result {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 1rem 1.1rem;
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 22rem;
+      font-size: 0.8rem;
+      margin: 0;
+      line-height: 1.5;
+      border: 1px solid #1e293b;
+    }
+    [hidden] { display: none !important; }
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      max-height: 20rem;
+      overflow-y: auto;
+    }
+    table#admin-customers-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+    #admin-customers-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f1f5f9;
+      box-shadow: 0 1px 0 var(--border);
+    }
+    #admin-customers-table th {
+      text-align: left;
+      padding: 0.55rem 0.65rem;
+      font-weight: 700;
+      color: #475569;
+      white-space: nowrap;
+    }
+    #admin-customers-table td {
+      padding: 0.5rem 0.65rem;
+      border-top: 1px solid var(--border);
+      vertical-align: top;
+    }
+    #admin-customers-table tbody tr:nth-child(even) { background: #fafafa; }
+    #admin-customers-table tbody tr[data-customer-id] {
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    #admin-customers-table tbody tr[data-customer-id]:hover { background: #eef2ff; }
+    #admin-customers-table .cell-muted { color: var(--muted); font-size: 0.75rem; }
+    #admin-customers-table .cell-active-yes { color: #047857; font-weight: 600; }
+    #admin-customers-table .cell-active-no { color: #b45309; font-weight: 600; }
+    #admin-customers-empty {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--muted);
+      padding: 0.75rem 0;
+    }
   </style>
 </head>
 <body id="admin-page">
   <header>
     <h1>Customers Admin</h1>
-    <p style="margin:.35rem 0 0;font-size:.85rem;opacity:.85">Internal console — uses the REST API in this browser session.</p>
+    <p>Internal console for staff — choose an operation and fill only the fields that apply.</p>
   </header>
   <main>
-    <section aria-labelledby="fields-heading">
-      <h2 id="fields-heading">Customer fields</h2>
-      <label for="customer-id">Customer ID</label>
-      <input id="customer-id" name="customer-id" type="text" inputmode="numeric" placeholder="e.g. 1" autocomplete="off" />
-      <label for="customer-name">Name</label>
-      <input id="customer-name" name="customer-name" type="text" autocomplete="off" />
-      <label for="customer-userid">User ID</label>
-      <input id="customer-userid" name="customer-userid" type="text" autocomplete="off" />
-      <label for="customer-email">Email</label>
-      <input id="customer-email" name="customer-email" type="email" autocomplete="off" />
-      <label for="customer-address">Address</label>
-      <input id="customer-address" name="customer-address" type="text" autocomplete="off" />
-      <label for="query-name">Query by name (list filter)</label>
-      <input id="query-name" name="query-name" type="text" placeholder="Exact name, case-insensitive" autocomplete="off" />
+    <section class="panel" aria-labelledby="fields-heading">
+      <h2 id="fields-heading">API operation</h2>
+      <div class="field">
+        <label class="field-label" for="admin-operation">Endpoint</label>
+        <select id="admin-operation" name="admin-operation" aria-describedby="admin-endpoint-hint">
+        <option value="create">Create — POST /customers</option>
+        <option value="read">Read one — GET /customers/{id}</option>
+        <option value="update">Update — PUT /customers/{id}</option>
+        <option value="delete">Delete — DELETE /customers/{id}</option>
+        <option value="list">List all — GET /customers</option>
+        <option value="query">Query by name — GET /customers?name=…</option>
+        <option value="activate">Activate — PUT /customers/{id}/activate</option>
+      </select>
+      </div>
+      <p id="admin-endpoint-hint" class="endpoint-hint" aria-live="polite"></p>
+
+      <fieldset id="group-id" data-ops="read update delete activate">
+        <legend>Customer ID</legend>
+        <p class="id-field-hint">Use the numeric <strong>id</strong> from list or get JSON — not <strong>userid</strong> (e.g. delete id <code>104</code>, not userid <code>"200"</code>).</p>
+        <div class="field">
+          <label class="field-label" for="customer-id">ID</label>
+          <input id="customer-id" name="customer-id" type="text" inputmode="numeric" placeholder="e.g. 104" autocomplete="off" />
+        </div>
+      </fieldset>
+
+      <fieldset id="group-payload" data-ops="create update">
+        <legend>Customer details</legend>
+        <p class="subheading">Required</p>
+        <div class="field">
+          <label class="field-label" for="customer-name">Name</label>
+          <input id="customer-name" name="customer-name" type="text" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="customer-userid">User ID</label>
+          <input id="customer-userid" name="customer-userid" type="text" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="customer-email">Email</label>
+          <input id="customer-email" name="customer-email" type="email" autocomplete="off" />
+        </div>
+        <p class="subheading">Optional</p>
+        <div class="field">
+          <label class="field-label" for="customer-address">Address <span class="optional">(optional)</span></label>
+          <input id="customer-address" name="customer-address" type="text" autocomplete="off" />
+        </div>
+        <div class="checkbox-field">
+          <input id="customer-active" name="customer-active" type="checkbox" checked aria-describedby="active-hint" />
+          <div class="checkbox-copy">
+            <label for="customer-active">Active <span class="optional">(optional)</span></label>
+            <span id="active-hint" class="checkbox-hint">When checked, the account is treated as active in the API (default for new customers).</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="customer-product-attributes">Product attributes <span class="optional">(optional)</span></label>
+          <input id="customer-product-attributes" name="customer-product-attributes" type="text"
+            placeholder="Notes, tags, or attributes" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="customer-assigned-csm">Assigned CSM <span class="optional">(optional)</span></label>
+          <input id="customer-assigned-csm" name="customer-assigned-csm" type="text"
+            placeholder="Customer success manager" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="customer-arr-value">ARR value <span class="optional">(optional)</span></label>
+          <input id="customer-arr-value" name="customer-arr-value" type="text" inputmode="decimal"
+            placeholder="Annual recurring revenue (number)" autocomplete="off" />
+        </div>
+      </fieldset>
+
+      <fieldset id="group-query" data-ops="query">
+        <legend>Name filter</legend>
+        <div class="field">
+          <label class="field-label" for="query-name">Name <span class="optional">(exact match, case-insensitive)</span></label>
+          <input id="query-name" name="query-name" type="text" placeholder="e.g. Alice" autocomplete="off" />
+        </div>
+      </fieldset>
+
+      <p id="group-list-hint" class="list-hint" data-ops="list" hidden>No fields needed — loads every customer.</p>
+
       <div class="row">
-        <button type="button" id="btn-create">Create</button>
-        <button type="button" id="btn-read" class="secondary">Retrieve</button>
-        <button type="button" id="btn-update" class="secondary">Update</button>
-        <button type="button" id="btn-delete" class="secondary">Delete</button>
-        <button type="button" id="btn-list" class="secondary">List all</button>
-        <button type="button" id="btn-query" class="secondary">Query by name</button>
-        <button type="button" id="btn-activate" class="secondary">Activate</button>
+        <button type="button" id="btn-execute">Send request</button>
       </div>
     </section>
-    <section>
+    <section class="panel" aria-labelledby="customers-table-heading">
+      <h2 id="customers-table-heading">Customers</h2>
+      <p id="admin-customers-empty" class="list-hint">
+        Run <strong>List all</strong> or <strong>Query by name</strong> to fill this table. After a successful read, create, update, or activate, the selected customer appears here. Click a row to copy the numeric ID into the form.
+      </p>
+      <div id="admin-customers-table-wrap" class="table-wrap" hidden>
+        <table id="admin-customers-table" aria-describedby="customers-table-heading">
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Name</th>
+              <th scope="col">User ID</th>
+              <th scope="col">Email</th>
+              <th scope="col">Active</th>
+            </tr>
+          </thead>
+          <tbody id="admin-customers-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel" aria-labelledby="response-heading">
+      <h2 id="response-heading">Response</h2>
       <div id="admin-status" role="status" aria-live="polite"></div>
       <pre id="admin-result">{}</pre>
     </section>
@@ -69,6 +392,19 @@
   const $ = (id) => document.getElementById(id);
   const statusEl = $("admin-status");
   const resultEl = $("admin-result");
+  const customersTbody = $("admin-customers-tbody");
+  const customersWrap = $("admin-customers-table-wrap");
+  const customersEmptyHint = $("admin-customers-empty");
+
+  const OPERATION_META = {
+    create: { verb: "POST", path: "/customers" },
+    read: { verb: "GET", path: "/customers/{id}" },
+    update: { verb: "PUT", path: "/customers/{id}" },
+    delete: { verb: "DELETE", path: "/customers/{id}" },
+    list: { verb: "GET", path: "/customers" },
+    query: { verb: "GET", path: "/customers?name=…" },
+    activate: { verb: "PUT", path: "/customers/{id}/activate" },
+  };
 
   function setStatus(msg, ok) {
     statusEl.textContent = msg || "";
@@ -80,8 +416,103 @@
       typeof data === "string" ? data : JSON.stringify(data, null, 2);
   }
 
+  function escapeHtml(s) {
+    if (s == null) return "";
+    const d = document.createElement("div");
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  function looksLikeCustomer(o) {
+    return (
+      o &&
+      typeof o === "object" &&
+      !Array.isArray(o) &&
+      "id" in o &&
+      "name" in o &&
+      "userid" in o
+    );
+  }
+
+  function customersArrayFromBody(body) {
+    if (Array.isArray(body)) {
+      return body.filter(looksLikeCustomer);
+    }
+    if (looksLikeCustomer(body)) {
+      return [body];
+    }
+    return null;
+  }
+
+  function setCustomersTable(rows) {
+    customersTbody.replaceChildren();
+    if (!rows.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td colspan="5" class="cell-muted">No customers in this result.</td>';
+      customersTbody.appendChild(tr);
+      customersWrap.hidden = false;
+      customersEmptyHint.hidden = true;
+      return;
+    }
+    rows.forEach((c) => {
+      const tr = document.createElement("tr");
+      tr.dataset.customerId = String(c.id);
+      const active = c.active !== false;
+      tr.innerHTML =
+        "<td>" +
+        escapeHtml(c.id) +
+        "</td><td>" +
+        escapeHtml(c.name) +
+        "</td><td>" +
+        escapeHtml(c.userid) +
+        "</td><td>" +
+        escapeHtml(c.email) +
+        "</td><td class=\"" +
+        (active ? "cell-active-yes" : "cell-active-no") +
+        "\">" +
+        (active ? "Yes" : "No") +
+        "</td>";
+      tr.addEventListener("click", () => {
+        $("customer-id").value = String(c.id);
+        setStatus("ID " + c.id + " copied to the form.", true);
+      });
+      customersTbody.appendChild(tr);
+    });
+    customersWrap.hidden = false;
+    customersEmptyHint.hidden = true;
+  }
+
+  function resetCustomersTableHint() {
+    customersTbody.replaceChildren();
+    customersWrap.hidden = true;
+    customersEmptyHint.hidden = false;
+  }
+
+  function trySyncCustomersTable(body) {
+    const arr = customersArrayFromBody(body);
+    if (arr != null) {
+      setCustomersTable(arr);
+    }
+  }
+
   function jsonHeaders() {
     return { "Content-Type": "application/json", Accept: "application/json" };
+  }
+
+  function currentOp() {
+    return $("admin-operation").value;
+  }
+
+  function syncFieldGroups() {
+    const op = currentOp();
+    const meta = OPERATION_META[op];
+    $("admin-endpoint-hint").innerHTML =
+      "<span class=\"verb\">" + meta.verb + "</span>" + meta.path;
+    document.querySelectorAll("[data-ops]").forEach((el) => {
+      const ops = el.getAttribute("data-ops").trim().split(/\s+/);
+      el.hidden = !ops.includes(op);
+    });
   }
 
   function readForm() {
@@ -94,6 +525,29 @@
     };
   }
 
+  /** Optional API fields (create / update); returns { error } or { extra: object } */
+  function readOptionalCustomerFields() {
+    const arrRaw = $("customer-arr-value").value.trim();
+    let arr_value = null;
+    if (arrRaw !== "") {
+      const n = Number(arrRaw);
+      if (Number.isNaN(n)) {
+        return { error: "ARR value must be a number or left blank." };
+      }
+      arr_value = n;
+    }
+    const pa = $("customer-product-attributes").value.trim();
+    const csm = $("customer-assigned-csm").value.trim();
+    return {
+      extra: {
+        active: $("customer-active").checked,
+        product_attributes: pa || null,
+        assigned_csm: csm || null,
+        arr_value: arr_value,
+      },
+    };
+  }
+
   function fillForm(c) {
     if (!c) return;
     $("customer-id").value = c.id != null ? String(c.id) : "";
@@ -101,147 +555,213 @@
     $("customer-userid").value = c.userid || "";
     $("customer-email").value = c.email || "";
     $("customer-address").value = c.address || "";
+    $("customer-active").checked = c.active !== false;
+    $("customer-product-attributes").value = c.product_attributes || "";
+    $("customer-assigned-csm").value = c.assigned_csm || "";
+    $("customer-arr-value").value =
+      c.arr_value != null && c.arr_value !== "" ? String(c.arr_value) : "";
   }
 
-  $("btn-create").addEventListener("click", async () => {
-    const f = readForm();
-    if (!f.name || !f.userid || !f.email) {
-      setStatus("Name, User ID, and Email are required to create.", false);
+  function statusFromResponse(r, body, okMsg, errPrefix) {
+    if (r.ok) {
+      setStatus(okMsg, true);
       return;
     }
-    setStatus("Creating…", null);
-    try {
-      const r = await fetch("/customers", {
-        method: "POST",
-        headers: jsonHeaders(),
-        body: JSON.stringify({
-          name: f.name,
-          userid: f.userid,
-          email: f.email,
-          address: f.address || undefined,
-        }),
-      });
-      const text = await r.text();
-      let body;
-      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-      showResult(body);
-      setStatus(r.ok ? "Created." : "Create failed (" + r.status + ").", r.ok);
-      if (r.ok && body && body.id) fillForm(body);
-    } catch (e) {
-      setStatus(String(e), false);
+    let extra = "";
+    if (body && typeof body === "object" && body.message) {
+      extra = ": " + body.message;
+    } else if (typeof body === "string" && body.length && body.length < 200) {
+      extra = ": " + body;
     }
-  });
+    setStatus(errPrefix + " (" + r.status + ")" + extra, false);
+  }
 
-  $("btn-read").addEventListener("click", async () => {
-    const id = readForm().id;
-    if (!id) { setStatus("Enter a Customer ID.", false); return; }
-    setStatus("Loading…", null);
-    try {
-      const r = await fetch("/customers/" + encodeURIComponent(id), { headers: { Accept: "application/json" } });
-      const text = await r.text();
-      let body;
-      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-      showResult(body);
-      setStatus(r.ok ? "Loaded." : "Retrieve failed (" + r.status + ").", r.ok);
-      if (r.ok && body) fillForm(body);
-    } catch (e) {
-      setStatus(String(e), false);
-    }
-  });
-
-  $("btn-update").addEventListener("click", async () => {
+  async function runOperation() {
+    const op = currentOp();
     const f = readForm();
-    if (!f.id) { setStatus("Enter a Customer ID to update.", false); return; }
-    if (!f.name || !f.userid || !f.email) {
-      setStatus("Name, User ID, and Email are required for update.", false);
-      return;
-    }
-    setStatus("Updating…", null);
-    try {
-      const r = await fetch("/customers/" + encodeURIComponent(f.id), {
-        method: "PUT",
-        headers: jsonHeaders(),
-        body: JSON.stringify({
-          name: f.name,
-          userid: f.userid,
-          email: f.email,
-          address: f.address || undefined,
-        }),
-      });
-      const text = await r.text();
-      let body;
-      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-      showResult(body);
-      setStatus(r.ok ? "Updated." : "Update failed (" + r.status + ").", r.ok);
-      if (r.ok && body) fillForm(body);
-    } catch (e) {
-      setStatus(String(e), false);
-    }
-  });
 
-  $("btn-delete").addEventListener("click", async () => {
-    const id = readForm().id;
-    if (!id) { setStatus("Enter a Customer ID to delete.", false); return; }
-    setStatus("Deleting…", null);
-    try {
-      const r = await fetch("/customers/" + encodeURIComponent(id), { method: "DELETE" });
-      showResult(r.status === 204 ? { deleted: true, id: Number(id) } : await r.text());
-      setStatus(r.ok ? "Deleted." : "Delete failed (" + r.status + ").", r.ok);
-      if (r.ok) {
-        $("customer-id").value = "";
+    if (op === "create") {
+      if (!f.name || !f.userid || !f.email) {
+        setStatus("Name, User ID, and Email are required.", false);
+        return;
       }
-    } catch (e) {
-      setStatus(String(e), false);
+      const opt = readOptionalCustomerFields();
+      if (opt.error) {
+        setStatus(opt.error, false);
+        return;
+      }
+      setStatus("Creating…", null);
+      try {
+        const r = await fetch("/customers", {
+          method: "POST",
+          headers: jsonHeaders(),
+          body: JSON.stringify({
+            name: f.name,
+            userid: f.userid,
+            email: f.email,
+            address: f.address || undefined,
+            ...opt.extra,
+          }),
+        });
+        const text = await r.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        showResult(body);
+        statusFromResponse(r, body, "Created.", "Create failed");
+        if (r.ok && body) trySyncCustomersTable(body);
+        if (r.ok && body && body.id) fillForm(body);
+      } catch (e) {
+        setStatus(String(e), false);
+      }
+      return;
     }
-  });
 
-  $("btn-list").addEventListener("click", async () => {
-    setStatus("Loading list…", null);
-    try {
-      const r = await fetch("/customers", { headers: { Accept: "application/json" } });
-      const body = await r.json();
-      showResult(body);
-      setStatus(r.ok ? "List loaded (" + (Array.isArray(body) ? body.length : 0) + " rows)." : "List failed.", r.ok);
-    } catch (e) {
-      setStatus(String(e), false);
+    if (op === "read") {
+      if (!f.id) { setStatus("Customer ID is required.", false); return; }
+      setStatus("Loading…", null);
+      try {
+        const r = await fetch("/customers/" + encodeURIComponent(f.id), { headers: { Accept: "application/json" } });
+        const text = await r.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        showResult(body);
+        statusFromResponse(r, body, "Loaded.", "Retrieve failed");
+        if (r.ok && body) {
+          trySyncCustomersTable(body);
+          fillForm(body);
+        }
+      } catch (e) {
+        setStatus(String(e), false);
+      }
+      return;
     }
-  });
 
-  $("btn-query").addEventListener("click", async () => {
-    const q = $("query-name").value.trim();
-    if (!q) { setStatus("Enter a name to filter.", false); return; }
-    setStatus("Querying…", null);
-    try {
-      const r = await fetch("/customers?name=" + encodeURIComponent(q), {
-        headers: { Accept: "application/json" },
-      });
-      const body = await r.json();
-      showResult(body);
-      setStatus(r.ok ? "Query complete." : "Query failed.", r.ok);
-    } catch (e) {
-      setStatus(String(e), false);
+    if (op === "update") {
+      if (!f.id) { setStatus("Customer ID is required.", false); return; }
+      if (!f.name || !f.userid || !f.email) {
+        setStatus("Name, User ID, and Email are required.", false);
+        return;
+      }
+      const opt = readOptionalCustomerFields();
+      if (opt.error) {
+        setStatus(opt.error, false);
+        return;
+      }
+      setStatus("Updating…", null);
+      try {
+        const r = await fetch("/customers/" + encodeURIComponent(f.id), {
+          method: "PUT",
+          headers: jsonHeaders(),
+          body: JSON.stringify({
+            name: f.name,
+            userid: f.userid,
+            email: f.email,
+            address: f.address || undefined,
+            ...opt.extra,
+          }),
+        });
+        const text = await r.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        showResult(body);
+        statusFromResponse(r, body, "Updated.", "Update failed");
+        if (r.ok && body) {
+          trySyncCustomersTable(body);
+          fillForm(body);
+        }
+      } catch (e) {
+        setStatus(String(e), false);
+      }
+      return;
     }
-  });
 
-  $("btn-activate").addEventListener("click", async () => {
-    const id = readForm().id;
-    if (!id) { setStatus("Enter a Customer ID to activate.", false); return; }
-    setStatus("Activating…", null);
-    try {
-      const r = await fetch("/customers/" + encodeURIComponent(id) + "/activate", {
-        method: "PUT",
-        headers: { Accept: "application/json" },
-      });
-      const text = await r.text();
-      let body;
-      try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-      showResult(body);
-      setStatus(r.ok ? "Activated." : "Activate failed (" + r.status + ").", r.ok);
-      if (r.ok && body) fillForm(body);
-    } catch (e) {
-      setStatus(String(e), false);
+    if (op === "delete") {
+      if (!f.id) { setStatus("Customer ID is required.", false); return; }
+      setStatus("Deleting…", null);
+      try {
+        const r = await fetch("/customers/" + encodeURIComponent(f.id), { method: "DELETE" });
+        const text = await r.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        showResult(r.status === 204 ? { deleted: true, id: Number(f.id) } : body);
+        statusFromResponse(r, body, "Deleted.", "Delete failed");
+        if (r.ok) {
+          $("customer-id").value = "";
+          resetCustomersTableHint();
+        }
+      } catch (e) {
+        setStatus(String(e), false);
+      }
+      return;
     }
+
+    if (op === "list") {
+      setStatus("Loading list…", null);
+      try {
+        const r = await fetch("/customers", { headers: { Accept: "application/json" } });
+        const body = await r.json();
+        showResult(body);
+        statusFromResponse(
+          r,
+          body,
+          "List loaded (" + (Array.isArray(body) ? body.length : 0) + " rows).",
+          "List failed"
+        );
+        if (r.ok) trySyncCustomersTable(body);
+      } catch (e) {
+        setStatus(String(e), false);
+      }
+      return;
+    }
+
+    if (op === "query") {
+      const q = $("query-name").value.trim();
+      if (!q) { setStatus("Enter a name to filter.", false); return; }
+      setStatus("Querying…", null);
+      try {
+        const r = await fetch("/customers?name=" + encodeURIComponent(q), {
+          headers: { Accept: "application/json" },
+        });
+        const body = await r.json();
+        showResult(body);
+        statusFromResponse(r, body, "Query complete.", "Query failed");
+        if (r.ok) trySyncCustomersTable(body);
+      } catch (e) {
+        setStatus(String(e), false);
+      }
+      return;
+    }
+
+    if (op === "activate") {
+      if (!f.id) { setStatus("Customer ID is required.", false); return; }
+      setStatus("Activating…", null);
+      try {
+        const r = await fetch("/customers/" + encodeURIComponent(f.id) + "/activate", {
+          method: "PUT",
+          headers: { Accept: "application/json" },
+        });
+        const text = await r.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        showResult(body);
+        statusFromResponse(r, body, "Activated.", "Activate failed");
+        if (r.ok && body) {
+          trySyncCustomersTable(body);
+          fillForm(body);
+        }
+      } catch (e) {
+        setStatus(String(e), false);
+      }
+    }
+  }
+
+  $("admin-operation").addEventListener("change", () => {
+    syncFieldGroups();
+    setStatus("", null);
   });
+  $("btn-execute").addEventListener("click", runOperation);
+
+  syncFieldGroups();
 })();
   </script>
 </body>

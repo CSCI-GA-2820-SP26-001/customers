@@ -24,7 +24,14 @@ import logging
 from unittest import TestCase
 from unittest.mock import patch
 from wsgi import app
-from service.models import Customer, db, DataValidationError
+from sqlalchemy.exc import IntegrityError
+
+from service.models import (
+    Customer,
+    DataValidationError,
+    _friendly_integrity_message,
+    db,
+)
 from .factories import CustomerFactory
 
 DATABASE_URI = os.getenv(
@@ -193,8 +200,6 @@ class TestCustomerModel(TestCase):
 
     def test_update_error(self):
         """It should raise DataValidationError on update failure"""
-        from unittest.mock import patch
-
         profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
@@ -209,8 +214,6 @@ class TestCustomerModel(TestCase):
 
     def test_delete_error(self):
         """It should raise DataValidationError on delete failure"""
-        from unittest.mock import patch
-
         profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
@@ -225,8 +228,6 @@ class TestCustomerModel(TestCase):
 
     def test_create_error(self):
         """It should raise DataValidationError on create failure"""
-        from unittest.mock import patch
-
         profile = Customer(
             name="Jane Doe",
             userid="janedoe123",
@@ -258,3 +259,109 @@ class TestCustomerModel(TestCase):
         new_profile = Customer()
         new_profile.deserialize(data)
         self.assertEqual(new_profile.active, False)
+
+    def test_find_by_userid(self):
+        """It should find a customer by userid"""
+        profile = CustomerFactory()
+        profile.id = None
+        profile.create()
+        found = Customer.find_by_userid(profile.userid)
+        self.assertIsNotNone(found)
+        self.assertEqual(found.id, profile.id)
+
+    def test_find_by_userid_not_found(self):
+        """It should return None when userid does not exist"""
+        self.assertIsNone(Customer.find_by_userid("no_such_user_xyz"))
+
+    def test_create_generic_error_long_message_truncated(self):
+        """It should shorten very long non-integrity errors on create"""
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        long_msg = "x" * 250
+        with patch(
+            "service.models.db.session.commit", side_effect=RuntimeError(long_msg)
+        ):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.create()
+            self.assertIn("See server logs", str(ctx.exception))
+
+    def test_update_generic_error_long_message_truncated(self):
+        """It should shorten very long non-integrity errors on update"""
+        profile = Customer(
+            name="Jane Doe",
+            userid="janedoe123",
+            email="jane@example.com",
+            active=True,
+        )
+        profile.create()
+        long_msg = "y" * 250
+        with patch(
+            "service.models.db.session.commit", side_effect=RuntimeError(long_msg)
+        ):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.update()
+            self.assertIn("See server logs", str(ctx.exception))
+
+
+######################################################################
+#  I N T E G R I T Y   M E S S A G E   H E L P E R
+######################################################################
+class TestFriendlyIntegrityMessage(TestCase):
+    """Covers _friendly_integrity_message branches (used by create/update)."""
+
+    @staticmethod
+    def _make_integrity(orig_exc):
+        return IntegrityError("stmt", {}, orig_exc)
+
+    def test_detects_duplicate_userid(self):
+        """It should map userid unique violations to a short message."""
+        orig = Exception(
+            'duplicate key value violates unique constraint "ix_customer_userid"'
+        )
+        msg = _friendly_integrity_message(self._make_integrity(orig))
+        self.assertIn("user id", msg.lower())
+
+    def test_detects_duplicate_email(self):
+        """It should map email unique violations to a short message."""
+        orig = Exception(
+            'duplicate key value violates unique constraint "ix_customer_email"'
+        )
+        msg = _friendly_integrity_message(self._make_integrity(orig))
+        self.assertIn("email", msg.lower())
+
+    def test_detects_generic_unique_constraint(self):
+        """It should map other unique violations to a combined message."""
+        orig = Exception(
+            'duplicate key value violates unique constraint "some_other_key"'
+        )
+        msg = _friendly_integrity_message(self._make_integrity(orig))
+        self.assertIn("user id or email", msg.lower())
+
+    def test_unknown_integrity_maps_to_generic_save(self):
+        """It should return a generic save message when pattern unknown."""
+        orig = Exception("foreign key violation on child row")
+        msg = _friendly_integrity_message(self._make_integrity(orig))
+        self.assertIn("constraint", msg.lower())
+
+    def test_builds_raw_when_orig_missing(self):
+        """It should tolerate IntegrityError with no orig."""
+        err = IntegrityError("stmt", {}, None)
+        msg = _friendly_integrity_message(err)
+        self.assertIsInstance(msg, str)
+        self.assertTrue(len(msg) > 0)
+
+    def test_email_violation_not_masked_by_sql_echo(self):
+        """Email duplicate must not be classified as userid when SQL lists userid."""
+        orig = Exception("Key (email)=(same@example.com) already exists.")
+        err = IntegrityError(
+            "INSERT INTO customer (name, userid, email) VALUES (%s,%s,%s)",
+            {},
+            orig,
+        )
+        msg = _friendly_integrity_message(err)
+        self.assertIn("email", msg.lower())
+        self.assertNotIn("user id already", msg.lower())
