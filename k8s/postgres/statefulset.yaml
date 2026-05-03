@@ -15,16 +15,29 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:15-alpine
+          image: quay.io/sclorg/postgresql-15-c9s:latest
           ports:
             - containerPort: 5432
               name: postgres
-          envFrom:
-            - secretRef:
-                name: postgres-creds
+          env:
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-creds
+                  key: POSTGRES_USER
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-creds
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-creds
+                  key: POSTGRES_DB
           volumeMounts:
             - name: postgres-storage
-              mountPath: /var/lib/postgresql/data
+              mountPath: /var/lib/pgsql/data
               subPath: pgdata
   volumeClaimTemplates:
     - metadata:

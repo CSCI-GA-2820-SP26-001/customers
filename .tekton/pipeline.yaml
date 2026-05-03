@@ -17,8 +17,8 @@ spec:
       default: master
     - name: image
       type: string
-      description: Image reference to build and push (e.g. cluster-registry:5000/customers:1.0).
-      default: cluster-registry:5000/customers:1.0
+      description: Image reference to build and push (e.g. image-registry.openshift-image-registry.svc:5000/nj672-dev/customers:latest).
+      default: image-registry.openshift-image-registry.svc:5000/nj672-dev/customers:latest
     - name: base-url
       type: string
       description: Base URL where the deployed service is reachable from within the cluster.
@@ -73,18 +73,14 @@ spec:
         - lint
         - tests
       taskRef:
-        resolver: hub
+        resolver: cluster
         params:
-          - name: catalog
-            value: tekton-catalog-tasks
-          - name: type
-            value: artifact
           - name: kind
             value: task
           - name: name
             value: buildah
-          - name: version
-            value: "0.7"
+          - name: namespace
+            value: openshift-pipelines
       workspaces:
         - name: source
           workspace: source
