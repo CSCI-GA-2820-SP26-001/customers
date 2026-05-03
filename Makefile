@@ -51,7 +51,7 @@ run: ## Run the service
 .PHONY: bdd
 bdd: ## Run BDD tests with Behave
 	$(info Running BDD tests...)
-	behave
+	pipenv run python -m behave
 
 .PHONY: secret
 secret: ## Generate a secret hex key

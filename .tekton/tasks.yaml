@@ -143,5 +143,16 @@ spec:
         raise SystemExit(f"Timed out waiting for {url}")
         PY
 
+        echo "Installing Chromium for Selenium BDD..."
+        if command -v apt-get >/dev/null 2>&1; then
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            chromium chromium-driver ca-certificates fonts-liberation \
+            || apt-get install -y -qq chromium
+          export CHROMIUM_BIN="$(command -v chromium || true)"
+          export CHROMEDRIVER_PATH="$(command -v chromedriver || true)"
+        fi
+
         echo "Running BDD tests with BASE_URL=${BASE_URL}..."
+        export HEADLESS=1
         make bdd

@@ -272,7 +272,7 @@
     }
   </style>
 </head>
-<body id="admin-page">
+<body id="admin-page" data-last-http-status="">
   <header>
     <h1>Customers Admin</h1>
     <p>Internal console for staff — choose an operation and fill only the fields that apply.</p>
@@ -409,6 +409,23 @@
   function setStatus(msg, ok) {
     statusEl.textContent = msg || "";
     statusEl.className = ok === true ? "ok" : ok === false ? "err" : "";
+  }
+
+  function setLastHttpStatus(code) {
+    var root = $("admin-page");
+    if (root) {
+      root.setAttribute(
+        "data-last-http-status",
+        code === null || code === undefined ? "" : String(code)
+      );
+    }
+  }
+
+  async function doFetchWithStatus(url, options) {
+    setLastHttpStatus("");
+    const r = await fetch(url, options);
+    setLastHttpStatus(String(r.status));
+    return r;
   }
 
   function showResult(data) {
@@ -592,7 +609,7 @@
       }
       setStatus("Creating…", null);
       try {
-        const r = await fetch("/customers", {
+        const r = await doFetchWithStatus("/customers", {
           method: "POST",
           headers: jsonHeaders(),
           body: JSON.stringify({
@@ -620,7 +637,7 @@
       if (!f.id) { setStatus("Customer ID is required.", false); return; }
       setStatus("Loading…", null);
       try {
-        const r = await fetch("/customers/" + encodeURIComponent(f.id), { headers: { Accept: "application/json" } });
+        const r = await doFetchWithStatus("/customers/" + encodeURIComponent(f.id), { headers: { Accept: "application/json" } });
         const text = await r.text();
         let body;
         try { body = text ? JSON.parse(text) : null; } catch { body = text; }
@@ -649,7 +666,7 @@
       }
       setStatus("Updating…", null);
       try {
-        const r = await fetch("/customers/" + encodeURIComponent(f.id), {
+        const r = await doFetchWithStatus("/customers/" + encodeURIComponent(f.id), {
           method: "PUT",
           headers: jsonHeaders(),
           body: JSON.stringify({
@@ -679,7 +696,7 @@
       if (!f.id) { setStatus("Customer ID is required.", false); return; }
       setStatus("Deleting…", null);
       try {
-        const r = await fetch("/customers/" + encodeURIComponent(f.id), { method: "DELETE" });
+        const r = await doFetchWithStatus("/customers/" + encodeURIComponent(f.id), { method: "DELETE" });
         const text = await r.text();
         let body;
         try { body = text ? JSON.parse(text) : null; } catch { body = text; }
@@ -698,8 +715,10 @@
     if (op === "list") {
       setStatus("Loading list…", null);
       try {
-        const r = await fetch("/customers", { headers: { Accept: "application/json" } });
-        const body = await r.json();
+        const r = await doFetchWithStatus("/customers", { headers: { Accept: "application/json" } });
+        const text = await r.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
         showResult(body);
         statusFromResponse(
           r,
@@ -719,10 +738,12 @@
       if (!q) { setStatus("Enter a name to filter.", false); return; }
       setStatus("Querying…", null);
       try {
-        const r = await fetch("/customers?name=" + encodeURIComponent(q), {
+        const r = await doFetchWithStatus("/customers?name=" + encodeURIComponent(q), {
           headers: { Accept: "application/json" },
         });
-        const body = await r.json();
+        const text = await r.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
         showResult(body);
         statusFromResponse(r, body, "Query complete.", "Query failed");
         if (r.ok) trySyncCustomersTable(body);
@@ -736,7 +757,7 @@
       if (!f.id) { setStatus("Customer ID is required.", false); return; }
       setStatus("Activating…", null);
       try {
-        const r = await fetch("/customers/" + encodeURIComponent(f.id) + "/activate", {
+        const r = await doFetchWithStatus("/customers/" + encodeURIComponent(f.id) + "/activate", {
           method: "PUT",
           headers: { Accept: "application/json" },
         });
@@ -758,6 +779,7 @@
   $("admin-operation").addEventListener("change", () => {
     syncFieldGroups();
     setStatus("", null);
+    setLastHttpStatus("");
   });
   $("btn-execute").addEventListener("click", runOperation);
 

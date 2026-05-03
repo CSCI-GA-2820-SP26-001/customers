@@ -171,7 +171,7 @@ class Customer(db.Model):  # pylint: disable=too-many-instance-attributes
     def find(cls, by_id):
         """Finds a Customer by it's ID"""
         logger.info("Processing lookup for id %s ...", by_id)
-        return cls.query.session.get(cls, by_id)
+        return db.session.get(cls, by_id)
 
     @classmethod
     def find_by_name(cls, name):

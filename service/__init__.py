@@ -38,6 +38,14 @@ def create_app():
     from service.models import db
     db.init_app(app)
 
+    @app.before_request
+    def _clear_stale_db_session():
+        """Avoid leaking a failed transaction across requests on the same worker thread."""
+        try:
+            db.session.rollback()
+        except Exception:  # pylint: disable=broad-except
+            db.session.remove()
+
     with app.app_context():
         # Dependencies require we import the routes AFTER the Flask app is created
         # pylint: disable=wrong-import-position, wrong-import-order, unused-import
@@ -51,7 +59,10 @@ def create_app():
             db.create_all()
         except Exception as error:  # pylint: disable=broad-except
             app.logger.critical("%s: Cannot continue", error)
-            # gunicorn requires exit code 4 to stop spawning workers when they die
+            # Under pytest, re-raise so collection shows the real DB error instead of
+            # SystemExit (INTERNALERROR). Gunicorn still uses exit code 4 on failure.
+            if "pytest" in sys.modules:
+                raise
             sys.exit(4)
 
         # Set up logging for production

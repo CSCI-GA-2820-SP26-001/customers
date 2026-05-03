@@ -96,6 +96,7 @@ class TestCustomerService(TestCase):
         self.assertIn('id="admin-operation"', html)
         self.assertIn('id="admin-page"', html)
         self.assertIn('id="admin-customers-table"', html)
+        self.assertIn("data-last-http-status", html)
 
     def test_create_customer(self):
         """It should Create a new Customer"""
