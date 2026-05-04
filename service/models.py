@@ -22,14 +22,20 @@ class DataValidationError(Exception):
 
 def _friendly_integrity_message(exc: IntegrityError) -> str:
     """Turn a DB unique/constraint error into a short API message."""
-    raw = " ".join(
-        part
-        for part in (
-            str(exc.orig) if getattr(exc, "orig", None) else "",
-            str(exc),
-        )
-        if part
-    ).lower()
+    orig = getattr(exc, "orig", None)
+    # Prefer the DBAPI message only. str(exc) often echoes SQL with every column
+    # name (e.g. "userid"), which wrongly matches duplicate-email violations.
+    if orig is not None and str(orig).strip():
+        raw = str(orig).lower()
+    else:
+        raw = " ".join(
+            part
+            for part in (
+                str(orig) if orig is not None else "",
+                str(exc),
+            )
+            if part
+        ).lower()
     if re.search(r"\b(userid|user_id|ix_customer_userid)\b", raw) or (
         "userid" in raw and "unique" in raw
     ):

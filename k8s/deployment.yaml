@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: customers
-          image: cluster-registry:5000/customers:1.0
+          image: image-registry.openshift-image-registry.svc:5000/nj672-dev/customers:latest
           imagePullPolicy: IfNotPresent
           command: ["gunicorn"]
           args: ["--bind", "0.0.0.0:8080", "wsgi:app"]
