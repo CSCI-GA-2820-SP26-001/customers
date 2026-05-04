@@ -149,6 +149,17 @@ class TestCustomerService(TestCase):
         updated = Customer.find(customer.id)
         self.assertEqual(updated.name, "Bob")
 
+    def test_update_customer_validation_error_returns_400(self):
+        """It should return 400 when update payload fails deserialize validation."""
+        customer = CustomerFactory()
+        customer.create()
+        resp = self.client.put(
+            f"/customers/{customer.id}",
+            json={"name": "Incomplete"},
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_delete_customer(self):
         """It should Delete a Customer"""
         customer = CustomerFactory()

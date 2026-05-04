@@ -23,7 +23,11 @@ import os
 import logging
 from unittest import TestCase
 from unittest.mock import patch
+
+from sqlalchemy.exc import IntegrityError
+
 from wsgi import app
+from service import models as models_module
 from service.models import Customer, db, DataValidationError
 from .factories import CustomerFactory
 
@@ -185,6 +189,113 @@ class TestCustomerModel(TestCase):
             profile.deserialize,
             "this is not a dict",
         )
+
+    def test_deserialize_attribute_error(self):
+        """It should wrap AttributeError from bad payload shapes."""
+
+        class _BadDict(dict):
+            def __getitem__(self, key):
+                if key == "name":
+                    raise AttributeError("simulated")
+                return super().__getitem__(key)
+
+        profile = Customer()
+        bad = _BadDict([("name", "x"), ("userid", "u1"), ("email", "e@e.com")])
+        with self.assertRaises(DataValidationError) as ctx:
+            profile.deserialize(bad)
+        self.assertIn("simulated", str(ctx.exception))
+
+    def test_find_by_userid(self):
+        """It should find a customer by userid and return None when missing."""
+        profile = CustomerFactory(userid="findme_uid", email="findme_uid@example.com")
+        profile.create()
+        found = Customer.find_by_userid("findme_uid")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.id, profile.id)
+        self.assertIsNone(Customer.find_by_userid("no_such_userid_xyz"))
+
+    def test_friendly_integrity_message_userid(self):
+        """_friendly_integrity_message maps userid unique violations."""
+        orig = Exception("duplicate key value violates unique constraint ix_customer_userid")
+        exc = IntegrityError("stmt", {}, orig)
+        msg = models_module._friendly_integrity_message(exc)
+        self.assertIn("user id", msg.lower())
+
+    def test_friendly_integrity_message_email(self):
+        """_friendly_integrity_message maps email unique violations."""
+        orig = Exception("duplicate key value violates unique constraint ix_customer_email")
+        exc = IntegrityError("stmt", {}, orig)
+        msg = models_module._friendly_integrity_message(exc)
+        self.assertIn("email", msg.lower())
+
+    def test_friendly_integrity_message_generic_unique(self):
+        """Unknown unique constraint still returns a short combined message."""
+        orig = Exception("duplicate key value violates unique constraint ix_other")
+        exc = IntegrityError("stmt", {}, orig)
+        msg = models_module._friendly_integrity_message(exc)
+        self.assertIn("user id or email", msg.lower())
+
+    def test_friendly_integrity_message_fallback(self):
+        """When no pattern matches, return the generic save message."""
+        orig = Exception("some database failure")
+        exc = IntegrityError("stmt", {}, orig)
+        msg = models_module._friendly_integrity_message(exc)
+        self.assertIn("constraint", msg.lower())
+
+    def test_create_integrity_error_duplicate_userid(self):
+        """create() maps IntegrityError to DataValidationError for duplicate userid."""
+        a = CustomerFactory(userid="same_uid", email="a_dup@example.com")
+        a.create()
+        b = CustomerFactory(userid="same_uid", email="b_dup@example.com")
+        with self.assertRaises(DataValidationError) as ctx:
+            b.create()
+        self.assertIn("user id", str(ctx.exception).lower())
+
+    def test_create_integrity_error_duplicate_email(self):
+        """create() maps email unique IntegrityError (DB message) to DataValidationError."""
+        profile = Customer(name="EmailDup", userid="u_email_dup", email="edup@example.com")
+        profile.id = None
+        orig = Exception("UNIQUE constraint failed: customer.email")
+        err = IntegrityError("stmt", {}, orig)
+        with patch("service.models.db.session.commit", side_effect=err):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.create()
+        self.assertIn("email", str(ctx.exception).lower())
+
+    def test_create_generic_error_message_truncated(self):
+        """Very long non-integrity errors are shortened in the API message."""
+        profile = Customer(name="LongErr", userid="long_err_u", email="long_err@example.com")
+        profile.id = None
+        long_msg = "x" * 300
+        with patch(
+            "service.models.db.session.commit", side_effect=RuntimeError(long_msg)
+        ):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.create()
+        self.assertIn("server logs", str(ctx.exception).lower())
+
+    def test_update_integrity_error_message(self):
+        """update() maps IntegrityError through _friendly_integrity_message."""
+        profile = CustomerFactory()
+        profile.create()
+        orig = Exception("duplicate key email ix_customer_email")
+        err = IntegrityError("stmt", {}, orig)
+        with patch("service.models.db.session.commit", side_effect=err):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.update()
+        self.assertIn("email", str(ctx.exception).lower())
+
+    def test_update_generic_error_message_truncated(self):
+        """Very long non-integrity errors on update are shortened."""
+        profile = CustomerFactory()
+        profile.create()
+        long_msg = "y" * 300
+        with patch(
+            "service.models.db.session.commit", side_effect=RuntimeError(long_msg)
+        ):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.update()
+        self.assertIn("server logs", str(ctx.exception).lower())
 
     def test_find_by_name_not_found(self):
         """It should return empty list when name not found"""
