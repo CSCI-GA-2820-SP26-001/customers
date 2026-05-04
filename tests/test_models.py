@@ -23,9 +23,10 @@ import os
 import logging
 from unittest import TestCase
 from unittest.mock import patch
-from wsgi import app
+
 from sqlalchemy.exc import IntegrityError
 
+from wsgi import app
 from service.models import (
     Customer,
     DataValidationError,
@@ -192,6 +193,52 @@ class TestCustomerModel(TestCase):
             profile.deserialize,
             "this is not a dict",
         )
+
+    def test_deserialize_attribute_error(self):
+        """It should wrap AttributeError from bad payload shapes."""
+
+        class _BadDict(dict):
+            def __getitem__(self, key):
+                if key == "name":
+                    raise AttributeError("simulated")
+                return super().__getitem__(key)
+
+        profile = Customer()
+        bad = _BadDict([("name", "x"), ("userid", "u1"), ("email", "e@e.com")])
+        with self.assertRaises(DataValidationError) as ctx:
+            profile.deserialize(bad)
+        self.assertIn("simulated", str(ctx.exception))
+
+    def test_create_integrity_error_duplicate_userid(self):
+        """create() maps IntegrityError to DataValidationError for duplicate userid."""
+        a = CustomerFactory(userid="same_uid", email="a_dup@example.com")
+        a.create()
+        b = CustomerFactory(userid="same_uid", email="b_dup@example.com")
+        with self.assertRaises(DataValidationError) as ctx:
+            b.create()
+        self.assertIn("user id", str(ctx.exception).lower())
+
+    def test_create_integrity_error_duplicate_email(self):
+        """create() maps email unique IntegrityError (DB message) to DataValidationError."""
+        profile = Customer(name="EmailDup", userid="u_email_dup", email="edup@example.com")
+        profile.id = None
+        orig = Exception("UNIQUE constraint failed: customer.email")
+        err = IntegrityError("stmt", {}, orig)
+        with patch("service.models.db.session.commit", side_effect=err):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.create()
+        self.assertIn("email", str(ctx.exception).lower())
+
+    def test_update_integrity_error_message(self):
+        """update() maps IntegrityError through _friendly_integrity_message."""
+        profile = CustomerFactory()
+        profile.create()
+        orig = Exception("duplicate key email ix_customer_email")
+        err = IntegrityError("stmt", {}, orig)
+        with patch("service.models.db.session.commit", side_effect=err):
+            with self.assertRaises(DataValidationError) as ctx:
+                profile.update()
+        self.assertIn("email", str(ctx.exception).lower())
 
     def test_find_by_name_not_found(self):
         """It should return empty list when name not found"""
