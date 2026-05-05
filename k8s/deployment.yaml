@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: customers
-          image: image-registry.openshift-image-registry.svc:5000/nj672-dev/customers:latest
+          # Matches Makefile default (K3D + embedded registry). On OpenShift, use oc set image or the pipeline image param.
+          image: cluster-registry:5000/customers:1.0
           imagePullPolicy: IfNotPresent
           command: ["gunicorn"]
           args: ["--bind", "0.0.0.0:8080", "wsgi:app"]
