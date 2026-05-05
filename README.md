@@ -110,6 +110,28 @@ If the EventListener pod is in **CrashLoopBackOff**, ensure the **ClusterRoleBin
 
 ---
 
+## OpenShift: external access (Customers API Route)
+
+The **Customers** `Service` exposes port **80** → pod **8080** with a named port **`http`** so an OpenShift **Route** can set **`spec.port.targetPort: http`** unambiguously.
+
+After **`oc login`** and **`oc project <your-namespace>`**:
+
+1. Ensure the deployment image is pullable in that namespace (build/push to the internal registry or `oc set image` as in your pipeline).
+2. Apply app + Route:
+   ```bash
+   make deploy-openshift
+   ```
+   Or manually: `oc apply -f k8s/postgres/` (wait for Postgres), then `oc apply -f k8s/deployment.yaml -f k8s/service.yaml`, then **`oc apply -f k8s/openshift/route.yaml`**.
+3. Open the app host and check health:
+   ```bash
+   oc get route customers -o jsonpath='https://{.spec.host}{"\n"}'
+   ```
+   Use `http://` if your Route has no TLS. Then `curl -sS -i "https://<host>/health"` (or `http://`) should return **200**.
+
+On plain Kubernetes, keep using **`k8s/ingress.yaml`**; the CD **deploy** task applies **Route** when the Route CRD exists, otherwise **Ingress**.
+
+---
+
 ## Project layout
 
 ```text

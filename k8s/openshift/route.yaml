@@ -1,0 +1,16 @@
+# OpenShift Route (route.openshift.io). Use on OpenShift; skip on plain Kubernetes (use ingress.yaml).
+# targetPort must match a port name on Service customers (see k8s/service.yaml: name http -> pod 8080).
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: customers
+  labels:
+    app: customers
+spec:
+  to:
+    kind: Service
+    name: customers
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None

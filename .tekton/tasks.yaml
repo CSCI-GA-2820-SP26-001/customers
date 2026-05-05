@@ -90,10 +90,20 @@ spec:
       workingDir: $(workspaces.source.path)
       script: |
         #!/usr/bin/env bash
-        set -e
-        echo "Deploying image $(params.image) to cluster..."
-        oc apply -R -f k8s/
-        echo "Deployment manifests applied."
+        set -euo pipefail
+        NS="$(oc project -q)"
+        echo "Deploying to namespace ${NS} with image $(params.image)"
+        oc apply -n "${NS}" -f k8s/postgres/
+        oc rollout status -n "${NS}" statefulset/postgres --timeout=180s
+        oc apply -n "${NS}" -f k8s/deployment.yaml -f k8s/service.yaml
+        oc set image -n "${NS}" deployment/customers customers="$(params.image)" --record
+        oc rollout status -n "${NS}" deployment/customers --timeout=300s
+        if oc get crd routes.route.openshift.io &>/dev/null; then
+          oc apply -n "${NS}" -f k8s/openshift/route.yaml
+        else
+          oc apply -n "${NS}" -f k8s/ingress.yaml
+        fi
+        echo "Deployment applied."
 ---
 apiVersion: tekton.dev/v1
 kind: Task
