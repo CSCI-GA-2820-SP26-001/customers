@@ -75,14 +75,6 @@ deploy: ## Deploy the service on local Kubernetes
 	$(info Deploying service locally...)
 	kubectl apply -R -f k8s/
 
-.PHONY: tekton-openshift
-tekton-openshift: ## Apply Tekton manifests and expose GitHub webhook EventListener Route (oc login first)
-	$(info Applying Tekton pipeline, tasks, triggers, webhook RBAC, and EventListener route...)
-	oc apply -f .tekton/workspace.yaml -f .tekton/tasks.yaml -f .tekton/pipeline.yaml -f .tekton/triggers.yaml
-	oc apply -f .tekton/rbac-eventlistener-cluster.yaml
-	-oc create clusterrolebinding tekton-triggers-el-interceptors --clusterrole=tekton-triggers-el-interceptors --serviceaccount="$$(oc project -q):tekton-triggers-sa"
-	oc apply -f .tekton/eventlistener-route.yaml
-
 ############################################################
 # COMMANDS FOR BUILDING THE IMAGE
 ############################################################

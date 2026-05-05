@@ -10,11 +10,8 @@ metadata:
   name: tekton-triggers-role
 rules:
   - apiGroups: ["tekton.dev"]
-    resources: ["pipelineruns", "pipelineruns/status"]
-    verbs: ["create", "get", "list", "watch", "patch", "update"]
-  - apiGroups: ["tekton.dev"]
-    resources: ["pipelines"]
-    verbs: ["get", "list"]
+    resources: ["pipelineruns"]
+    verbs: ["create"]
   - apiGroups: [""]
     resources: ["configmaps", "secrets"]
     verbs: ["get", "list", "watch"]
@@ -65,6 +62,10 @@ spec:
             value: $(tt.params.repo-url)
           - name: revision
             value: $(tt.params.revision)
+          - name: image
+            value: cluster-registry:5000/customers:$(tt.params.revision)
+          - name: base-url
+            value: http://customers
         workspaces:
           - name: source
             volumeClaimTemplate:

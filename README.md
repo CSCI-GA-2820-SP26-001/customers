@@ -85,31 +85,6 @@ make lint
 
 ---
 
-## OpenShift: Tekton GitHub webhook (EventListener)
-
-After **`oc login`** and **`oc project <your-namespace>`**:
-
-1. Apply pipeline, tasks, triggers, CEL interceptor RBAC, and the Route that exposes the listener:
-   ```bash
-   make tekton-openshift
-   ```
-   Or: `oc apply -f .tekton/` then apply **`.tekton/rbac-eventlistener-cluster.yaml`**, create the **ClusterRoleBinding** (see comments in that file), and **`oc apply -f .tekton/eventlistener-route.yaml`**.
-
-2. Webhook URL for GitHub (**push** events; trigger filters **`master`**):
-   ```bash
-   oc get route github-webhook -o jsonpath='https://{.spec.host}{"\n"}'
-   ```
-   Use `http://` instead of `https://` if your Route has no TLS. Payload URL should be `https://<host>/` (or `http://...`).
-
-3. Confirm a push to **`master`** creates a PipelineRun:
-   ```bash
-   oc get pipelineruns
-   ```
-
-If the EventListener pod is in **CrashLoopBackOff**, ensure the **ClusterRoleBinding** for **`tekton-triggers-sa`** to **`tekton-triggers-el-interceptors`** exists (CEL needs **clusterinterceptors** read access).
-
----
-
 ## Project layout
 
 ```text
