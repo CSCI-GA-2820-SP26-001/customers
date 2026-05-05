@@ -1,0 +1,19 @@
+---
+# OpenShift Route exposing the Tekton EventListener service created from:
+#   kind: EventListener
+#   metadata.name: github-webhook
+#
+# Tekton Triggers creates a Service named: el-<eventlistener-name>
+# => el-github-webhook
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: github-webhook
+spec:
+  to:
+    kind: Service
+    name: el-github-webhook
+    weight: 100
+  port:
+    targetPort: http-listener
+  wildcardPolicy: None
