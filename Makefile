@@ -75,6 +75,14 @@ deploy: ## Deploy the service on local Kubernetes
 	$(info Deploying service locally...)
 	kubectl apply -R -f k8s/
 
+.PHONY: deploy-openshift
+deploy-openshift: ## Deploy Postgres + app + OpenShift Route (oc login + oc project first)
+	$(info Deploying Postgres, app, and Route on OpenShift...)
+	oc apply -f k8s/postgres/
+	oc rollout status statefulset/postgres --timeout=180s
+	oc apply -f k8s/deployment.yaml -f k8s/service.yaml
+	oc apply -f k8s/openshift/route.yaml
+
 .PHONY: tekton-openshift
 tekton-openshift: ## Apply Tekton manifests and expose GitHub webhook EventListener Route (oc login first)
 	$(info Applying Tekton pipeline, tasks, triggers, webhook RBAC, and EventListener route...)
