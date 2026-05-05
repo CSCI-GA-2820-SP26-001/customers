@@ -84,7 +84,9 @@ deploy-openshift: ## Deploy Postgres + app + OpenShift Route (oc login + oc proj
 	oc apply -f k8s/postgres/
 	oc rollout status statefulset/postgres --timeout=180s
 	oc apply -f k8s/deployment.yaml -f k8s/service.yaml
+	oc rollout status deployment/customers --timeout=300s
 	oc apply -f k8s/openshift/route.yaml
+	@echo "Route URL: $$(oc get route customers -o jsonpath='http://{.spec.host}')"
 
 .PHONY: tekton-openshift
 tekton-openshift: ## Apply Tekton manifests and expose GitHub webhook EventListener Route (oc login first)
