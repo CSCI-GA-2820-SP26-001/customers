@@ -91,7 +91,8 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
-        NS="$(oc project -q)"
+        # Tekton pods don't have an "oc project" context; use the TaskRun namespace.
+        NS="$(context.taskRun.namespace)"
         echo "Deploying to namespace ${NS} with image $(params.image)"
         oc apply -n "${NS}" -f k8s/postgres/
         oc rollout status -n "${NS}" statefulset/postgres --timeout=180s
